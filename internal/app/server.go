@@ -20,6 +20,7 @@ const shutdownTimeout = 15 * time.Second
 // later (Stage 8, item #43). Named RunServer, not Run, so it reads
 // clearly at the main.go call site (app.RunServer(...)) alongside
 // app.NewRouter(...) and app.New(...).
+
 func RunServer(container *Container, handler http.Handler) error {
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", container.Config.Port),
