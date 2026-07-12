@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:16
+    container_name: school_local_pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: school_local
+    ports:
+      - "5433:5432"
+    volumes:
+      - school_local_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: golang:1.26-alpine
+    container_name: school_local_migrate
+    working_dir: /migrations
+    volumes:
+      - ./migrations:/migrations
+    environment:
+      DATABASE_URL: "postgres://postgres:postgres@db:5432/school_local?sslmode=disable"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "go install github.com/pressly/goose/v3/cmd/goose@latest &&
+             goose postgres \"$$DATABASE_URL\" up"
+
+  app:
+    build: .
+    container_name: school_local_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "postgres://postgres:postgres@db:5432/school_local?sslmode=disable"
+      PORT: "80"
+    ports:
+      - "80:80"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  test:
+    build:
+      context: .
+      target: builder
+    working_dir: /app
+    environment:
+      DATABASE_URL: "postgres://postgres:postgres@db:5432/school_local?sslmode=disable"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["go", "test", "./...", "-v"]
+
+volumes:
+  school_local_pg_data:
