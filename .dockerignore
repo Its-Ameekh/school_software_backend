@@ -1,0 +1,26 @@
+# Secrets — never bake these into the image
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+
+# Go build artifacts
+*.exe
+*.test
+*.out
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Editor/OS junk
+.vscode
+.idea
+*.log
+
+# Docs not needed at runtime
+CONTRIBUTING.md
