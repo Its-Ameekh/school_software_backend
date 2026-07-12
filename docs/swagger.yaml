@@ -1,0 +1,29 @@
+basePath: /
+info:
+  contact: {}
+  description: Backend API for the School Software preschool management system.
+  title: School Software API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      description: Checks database connectivity and reports service status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - system
+swagger: "2.0"
