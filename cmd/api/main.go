@@ -1,14 +1,16 @@
 package main
 
 import (
+	"context"
 	"os"
 
+	_ "github.com/Its-Ameekh/school_software_backend/docs"
 	"github.com/Its-Ameekh/school_software_backend/internal/app"
 	"github.com/Its-Ameekh/school_software_backend/internal/config"
 	"github.com/Its-Ameekh/school_software_backend/internal/database"
+	"github.com/Its-Ameekh/school_software_backend/internal/handlers"
 	"github.com/Its-Ameekh/school_software_backend/internal/logger"
-
-	_ "github.com/Its-Ameekh/school_software_backend/docs" // swag-generated docs package; run `swag init` first
+	"github.com/Its-Ameekh/school_software_backend/internal/middleware"
 )
 
 // @title           School Software API
@@ -17,35 +19,40 @@ import (
 // @BasePath        /
 
 func main() {
-	// 1. Config first — nothing else can safely start if required
-	//    settings are missing. config.Load() fatals internally on its
-	//    own if something required is blank.
+	// 1. Config first
 	cfg := config.Load()
 
-	// 2. Logger next — every step after this should log through it,
-	//    not fmt.Println, so boot failures show up in the same
-	//    structured format as everything else.
+	// 2. Logger next
 	log := logger.New(cfg.Environment)
 
-	// 3. Database — the one dependency almost everything else needs.
-	//    A failed connection here is fatal; there's nothing useful the
-	//    app can do without it.
+	// 3. Database
 	db, err := database.Connect(cfg.DatabaseURL, log)
 	if err != nil {
 		log.Error("failed to connect to database", "error", err)
 		os.Exit(1)
 	}
 
-	// 4. Container — bundles config/logger/db so nothing downstream
-	//    reaches for package-level globals.
+	// 4. Container — bundles config/logger/db
 	container := app.New(cfg, log, db)
 
-	// 5. Router — depends on the container to wire middleware and
-	//    routes (currently just /health; Stage 4 adds the rest).
-	router := app.NewRouter(container)
+	// [Stage 3 Core Singletons]
+	// Initialize JWKS Auth Middleware using the base Supabase URL from config
+	authMW, err := middleware.NewAuthMiddleware(context.Background(), db, cfg.SupabaseURL)
+	if err != nil {
+		log.Error("failed to initialize auth middleware", "error", err)
+		os.Exit(1)
+	}
 
-	// 6. Server — blocks here until SIGINT/SIGTERM, then drains
-	//    in-flight requests and exits cleanly.
+	// Initialize the structural rate limiter singleton
+	limiter := middleware.NewRateLimiter()
+
+	// Initialize the authentication route handler engines
+	authHandlers := handlers.NewAuthHandlers(db)
+
+	// 5. Router — pass all 4 required dependencies to fulfill the routing signature
+	router := app.NewRouter(container, authMW, limiter, authHandlers)
+
+	// 6. Server — blocks here until SIGINT/SIGTERM, then drains cleanly
 	if err := app.RunServer(container, router); err != nil {
 		log.Error("server exited with error", "error", err)
 		os.Exit(1)

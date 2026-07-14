@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 	"github.com/Its-Ameekh/school_software_backend/internal/app"
 	"github.com/Its-Ameekh/school_software_backend/internal/config"
 	"github.com/Its-Ameekh/school_software_backend/internal/database"
+	"github.com/Its-Ameekh/school_software_backend/internal/handlers"
+	"github.com/Its-Ameekh/school_software_backend/internal/middleware"
 )
 
 // TestDatabaseConnection confirms the DB connection layer works end to
@@ -52,10 +55,22 @@ func TestHealthEndpoint(t *testing.T) {
 		Environment: "test",
 		Port:        "80",
 		DatabaseURL: dbURL,
+		SupabaseURL: "https://mockproject.supabase.co", // Explicitly added to prevent nil config validation issues
 	}
 
 	container := app.New(cfg, logger, db)
-	router := app.NewRouter(container)
+
+	// Build out Stage 3 infrastructure dependencies inline to fulfill NewRouter parameters
+	ctx := context.Background()
+	authMW, err := middleware.NewAuthMiddleware(ctx, db, cfg.SupabaseURL)
+	if err != nil {
+		t.Fatalf("failed to initialize auth middleware for test: %v", err)
+	}
+	limiter := middleware.NewRateLimiter()
+	authHandlers := handlers.NewAuthHandlers(db)
+
+	// Updated to match the strict four-parameter signature enforced in router.go
+	router := app.NewRouter(container, authMW, limiter, authHandlers)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
