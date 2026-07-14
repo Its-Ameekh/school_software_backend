@@ -84,13 +84,13 @@ func requestLogger(container *Container) gin.HandlerFunc {
 // registerHealthRoute wires up GET /health, which checks the DB
 // connection and reports healthy/unhealthy[cite: 1].
 //
-// @Summary      Health check[cite: 1]
-// @Description  Checks database connectivity and reports service status[cite: 1]
-// @Tags         system[cite: 1]
-// @Produce      json[cite: 1]
-// @Success      200 {object} map[string]string[cite: 1]
-// @Failure      503 {object} map[string]string[cite: 1]
-// @Router       /health [get][cite: 1]
+// @Summary Health check
+// @Description Checks database connectivity and reports service status
+// @Tags system
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Failure 503 {object} map[string]string
+// @Router /health [get]
 func registerHealthRoute(r *gin.Engine, container *Container) {
 	r.GET("/health", func(c *gin.Context) {
 		if err := database.Ping(container.DB); err != nil {

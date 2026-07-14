@@ -54,14 +54,14 @@ type ErrorResponse struct {
 
 // Me godoc
 //
-//	@Summary		Get authenticated caller's profile
-//	@Description	Returns the local profile and role of whichever user the bearer token resolves to. Open to any authenticated role (PRINCIPAL, TEACHER, PARENT) — this is the proof-of-life route for the auth chain, not role-restricted.
-//	@Tags			auth
-//	@Security		ApiKeyAuth
-//	@Produce		json
-//	@Success		200	{object}	MeResponse
-//	@Failure		403	{object}	ErrorResponse	"invalid/expired token, or no matching local user"
-//	@Router			/api/auth/me [get]
+//	@Summary Get authenticated caller's profile
+//	@Description Returns the local profile and role of whichever user the bearer token resolves to. Open to any authenticated role (PRINCIPAL, TEACHER, PARENT) — this is the proof-of-life route for the auth chain, not role-restricted.
+//	@Tags auth
+//	@Security ApiKeyAuth
+//	@Produce json
+//	@Success 200	{object}	MeResponse
+//	@Failure 403	{object}	ErrorResponse	"invalid/expired token, or no matching local user"
+//	@Router /api/auth/me [get]
 func (h *AuthHandlers) Me(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
