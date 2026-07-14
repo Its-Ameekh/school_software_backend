@@ -49,7 +49,7 @@ jobs:
             docker rm placeholder || true
             docker stop backend || true
             docker rm backend || true
-            docker run -d -p 80:80 --restart unless-stopped --name backend \
+            docker run -d -p 80:8080 --restart unless-stopped --name backend \
               -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
               -e SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
               -e R2_ACCESS_KEY="${{ secrets.R2_ACCESS_KEY }}" \
