@@ -1,10 +1,50 @@
 basePath: /
+definitions:
+  handlers.ErrorResponse:
+    properties:
+      detail:
+        type: string
+      error:
+        type: string
+    type: object
+  handlers.MeResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      phone:
+        type: string
+      role:
+        type: string
+    type: object
 info:
   contact: {}
   description: Backend API for the School Software preschool management system.
   title: School Software API
   version: "1.0"
 paths:
+  /api/auth/me:
+    get:
+      description: Returns the local profile and role of whichever user the bearer
+        token resolves to. Open to any authenticated role (PRINCIPAL, TEACHER, PARENT)
+        — this is the proof-of-life route for the auth chain, not role-restricted.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MeResponse'
+        "403":
+          description: invalid/expired token, or no matching local user
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get authenticated caller's profile
+      tags:
+      - auth
   /health:
     get:
       description: Checks database connectivity and reports service status
