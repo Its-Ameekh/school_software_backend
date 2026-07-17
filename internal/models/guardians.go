@@ -1,7 +1,8 @@
 package models
 
-import "time"
-
+import (
+	"gorm.io/gorm" // Added
+)
 type Guardian struct {
 	ID                  uint `gorm:"primaryKey"`
 	StudentID           uint
@@ -13,7 +14,7 @@ type Guardian struct {
 	Mobile              *string
 	IsPrimaryContact    bool `gorm:"default:false"`
 	AuthorizedForPickup bool `gorm:"default:true"`
-	DeletedAt           *time.Time
+	DeletedAt           gorm.DeletedAt `gorm:"index"` // Fixed
 }
 
 func (Guardian) TableName() string { return "guardians" }

@@ -1,17 +1,20 @@
 package models
 
-import "time"
+import (
+	"time"
+	"gorm.io/gorm" 
+)
 
 type User struct {
-	ID        uint    `gorm:"primaryKey"`
-	AuthID    string  `gorm:"type:uuid;unique;not null"`
-	Email     *string `gorm:"unique"`
-	Role      string  `gorm:"not null"` // e.g. "ADMIN", "TEACHER", "GUARDIAN"
-	Name      string  `gorm:"not null"`
-	Phone     string  `gorm:"unique;not null"`
+	ID        uint           `gorm:"primaryKey"`
+	AuthID    string         `gorm:"type:uuid;unique;not null"`
+	Email     *string        `gorm:"unique"`
+	Role      string         `gorm:"not null"` // e.g. "principal", "teacher", "parent"
+	Name      string         `gorm:"not null"` // <--- RESTORED THIS LINE
+	Phone     string         `gorm:"unique;not null"`
 	AvatarURL *string
 	CreatedAt time.Time
-	DeletedAt *time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"` 
 }
 
 func (User) TableName() string { return "users" }
