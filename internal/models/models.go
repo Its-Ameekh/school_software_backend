@@ -27,16 +27,6 @@ type TeacherProfile struct {
 
 func (TeacherProfile) TableName() string { return "teacher_profiles" }
 
-type Class struct {
-	ID                  uint           `gorm:"primaryKey"`
-	Name                string         `gorm:"not null"`
-	TeacherID           *uint          
-	SubstituteTeacherID *uint          
-	SubstituteActive    bool           `gorm:"default:false"`
-}
-
-func (Class) TableName() string { return "classes" }
-
 type TimetableSlot struct {
 	ID           uint   `gorm:"primaryKey"` 
 	ClassID      uint   `gorm:"not null;index:idx_class_timetable,unique"`
