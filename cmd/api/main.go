@@ -11,6 +11,7 @@ import (
 	"github.com/Its-Ameekh/school_software_backend/internal/handlers"
 	"github.com/Its-Ameekh/school_software_backend/internal/logger"
 	"github.com/Its-Ameekh/school_software_backend/internal/middleware"
+	"github.com/Its-Ameekh/school_software_backend/internal/services"
 )
 
 // @title           School Software API
@@ -49,8 +50,13 @@ func main() {
 	// Initialize the authentication route handler engines
 	authHandlers := handlers.NewAuthHandlers(db)
 
-	// 5. Router — pass all 4 required dependencies to fulfill the routing signature
-	router := app.NewRouter(container, authMW, limiter, authHandlers)
+	// [Stage 4 — Eng B] Shared audit logger + finance/progress handlers
+	auditLogger := services.NewAuditLogger(db)
+	financeHandlers := handlers.NewFinanceHandlers(db, auditLogger)
+	progressHandlers := handlers.NewProgressHandlers(db, auditLogger)
+
+	// 5. Router — pass all required dependencies to fulfill the routing signature
+	router := app.NewRouter(container, authMW, limiter, authHandlers, financeHandlers, progressHandlers)
 
 	// 6. Server — blocks here until SIGINT/SIGTERM, then drains cleanly
 	if err := app.RunServer(container, router); err != nil {
