@@ -350,3 +350,131 @@ func (h *AttendanceHandlers) Submit(c *gin.Context) {
 		LockedCount: lockedCount,
 	})
 }
+
+// HistoryRecord is one attendance row as returned by the history
+// endpoint.
+type HistoryRecord struct {
+	ID                uint       `json:"id"`
+	StudentID         uint       `json:"student_id"`
+	ClassID           *uint      `json:"class_id,omitempty"`
+	Date              time.Time  `json:"date"`
+	Status            string     `json:"status"`
+	MarkedBy          *uint      `json:"marked_by,omitempty"`
+	LockedAt          *time.Time `json:"locked_at,omitempty"`
+	LockedByPrincipal bool       `json:"locked_by_principal"`
+}
+
+// History godoc
+//
+//	@Summary View attendance history
+//	@Description Filters attendance records by student_id and/or class_id, optionally bounded by a from/to date range. PARENT callers must supply student_id and are restricted to their own linked child; class_id-only queries are rejected for PARENT.
+//	@Tags attendance
+//	@Security ApiKeyAuth
+//	@Produce json
+//	@Param student_id query int false "Filter by student"
+//	@Param class_id query int false "Filter by class"
+//	@Param from query string false "Start date, YYYY-MM-DD"
+//	@Param to query string false "End date, YYYY-MM-DD"
+//	@Success 200 {array} HistoryRecord
+//	@Failure 400 {object} apierrors.ErrorResponse
+//	@Failure 403 {object} apierrors.ErrorResponse
+//	@Router /api/attendance/history [get]
+func (h *AttendanceHandlers) History(c *gin.Context) {
+	actorID, ok := middleware.GetUserID(c)
+	if !ok {
+		apierrors.Forbidden(c)
+		return
+	}
+	role, _ := middleware.GetUserRole(c)
+
+	studentIDStr := c.Query("student_id")
+	classIDStr := c.Query("class_id")
+
+	if studentIDStr == "" && classIDStr == "" {
+		apierrors.BadRequest(c, "must supply student_id or class_id")
+		return
+	}
+
+	ctx := c.Request.Context()
+	query := h.db.WithContext(ctx).Model(&models.Attendance{})
+
+	var studentID uint
+	if studentIDStr != "" {
+		id, err := strconv.ParseUint(studentIDStr, 10, 64)
+		if err != nil {
+			apierrors.BadRequest(c, "invalid student_id")
+			return
+		}
+		studentID = uint(id)
+	}
+
+	// PARENT restriction: must supply student_id, and it must be their
+	// own linked child. class_id-only queries would let a parent browse
+	// an entire class's attendance, so that's rejected outright.
+	if role == "PARENT" {
+		if studentID == 0 {
+			apierrors.Forbidden(c)
+			return
+		}
+
+		var guardian models.Guardian
+		result := h.db.WithContext(ctx).
+			Where("student_id = ? AND user_id = ?", studentID, actorID).
+			First(&guardian)
+		if result.Error != nil {
+			apierrors.Forbidden(c)
+			return
+		}
+	}
+
+	if studentID != 0 {
+		query = query.Where("student_id = ?", studentID)
+	}
+	if classIDStr != "" {
+		classID, err := strconv.ParseUint(classIDStr, 10, 64)
+		if err != nil {
+			apierrors.BadRequest(c, "invalid class_id")
+			return
+		}
+		query = query.Where("class_id = ?", classID)
+	}
+
+	if fromStr := c.Query("from"); fromStr != "" {
+		from, err := time.Parse("2006-01-02", fromStr)
+		if err != nil {
+			apierrors.BadRequest(c, "from must be in YYYY-MM-DD format")
+			return
+		}
+		query = query.Where("date >= ?", from)
+	}
+	if toStr := c.Query("to"); toStr != "" {
+		to, err := time.Parse("2006-01-02", toStr)
+		if err != nil {
+			apierrors.BadRequest(c, "to must be in YYYY-MM-DD format")
+			return
+		}
+		query = query.Where("date <= ?", to)
+	}
+
+	var records []models.Attendance
+	if err := query.Order("date DESC").Find(&records).Error; err != nil {
+		apierrors.Internal(c, err)
+		return
+	}
+
+	response := make([]HistoryRecord, 0, len(records))
+	for _, r := range records {
+		response = append(response, HistoryRecord{
+			ID:                r.ID,
+			StudentID:         r.StudentID,
+			ClassID:           r.ClassID,
+			Date:              r.Date,
+			Status:            r.Status,
+			MarkedBy:          r.MarkedBy,
+			LockedAt:          r.LockedAt,
+			LockedByPrincipal: r.LockedByPrincipal,
+		})
+	}
+
+	c.JSON(http.StatusOK, response)
+}
