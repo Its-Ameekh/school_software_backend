@@ -22,12 +22,12 @@ const (
 // round-trip on the hot path, and it lets a handler pass either a
 // pre-serialized diff or nil without type gymnastics.
 type AuditLogEntry struct {
-	ActorID    uint            `gorm:"column:actor_id"`
-	Action     AuditAction     `gorm:"column:action"`
-	Entity     string          `gorm:"column:entity"`     // e.g. "student", "fee_payment"
-	EntityID   uint            `gorm:"column:entity_id"`
-	Before     json.RawMessage `gorm:"column:before_state;type:jsonb"`
-	After      json.RawMessage `gorm:"column:after_state;type:jsonb"`
+	ActorID  uint            `gorm:"column:actor_id"`
+	Action   AuditAction     `gorm:"column:action"`
+	Entity   string          `gorm:"column:entity"` // e.g. "student", "fee_payment"
+	EntityID uint            `gorm:"column:entity_id"`
+	Before   json.RawMessage `gorm:"column:before_state;type:jsonb"`
+	After    json.RawMessage `gorm:"column:after_state;type:jsonb"`
 }
 
 type AuditLogger struct {
@@ -42,7 +42,7 @@ func NewAuditLogger(db *gorm.DB) *AuditLogger {
 // pre-marshaled JSON — this handles serialization so handlers don't
 // each reimplement it slightly differently.
 //
-//   auditLogger.Log(ctx, actorID, services.AuditUpdate, "student", student.ID, oldStudent, newStudent)
+//	auditLogger.Log(ctx, actorID, services.AuditUpdate, "student", student.ID, oldStudent, newStudent)
 //
 // For CREATE, pass before=nil. For DELETE, pass after=nil.
 func (a *AuditLogger) Log(ctx context.Context, actorID uint, action AuditAction, entity string, entityID uint, before, after any) error {
@@ -69,4 +69,10 @@ func (a *AuditLogger) Log(ctx context.Context, actorID uint, action AuditAction,
 	}
 
 	return a.db.WithContext(ctx).Table("audit_log").Create(&entry).Error
+}
+
+// AlertFailure provides a uniform internal-alert logging pipeline across the system
+// when an append-only mutation fails to record cleanly to the database ledger.
+func (a *AuditLogger) AlertFailure(entity string, entityID uint, action AuditAction, err error) {
+	println("[AUDIT_ALERT_FAILURE] Failed to write mutation trail for entity=" + entity + " during action=" + string(action) + ": " + err.Error())
 }
