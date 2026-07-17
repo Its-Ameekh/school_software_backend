@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"time"
+	"gorm.io/gorm" // Added
+)
 
 type Student struct {
 	ID              uint      `gorm:"primaryKey"`
@@ -16,7 +19,7 @@ type Student struct {
 	ClassID         *uint
 	GradeTier       string `gorm:"not null"`
 	CreatedAt       time.Time
-	DeletedAt       *time.Time
+	DeletedAt       gorm.DeletedAt `gorm:"index"` // Fixed
 }
 
 func (Student) TableName() string { return "students" }
