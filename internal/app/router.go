@@ -31,6 +31,9 @@ func NewRouter(
 	authHandlers *handlers.AuthHandlers,
 	financeHandlers *handlers.FinanceHandlers,
 	progressHandlers *handlers.ProgressHandlers,
+	studentHandlers *handlers.StudentHandlers,
+	classHandlers *handlers.ClassHandlers,
+	leaveHandlers *handlers.LeaveHandlers,
 ) *gin.Engine {
 
 	if container.Config.Environment == "prod" {
@@ -55,6 +58,43 @@ func NewRouter(
 	{
 		// Authentication
 		v1.GET("/auth/me", authHandlers.Me)
+
+		// ==========================================
+		// ENG A TRACK: Identity, Classes, Leaves
+		// ==========================================
+
+		// Student endpoints
+		students := v1.Group("/students")
+		{
+			students.POST("", studentHandlers.CreateStudent)
+			students.GET("/unassigned", studentHandlers.GetUnassignedStudents)
+			students.PATCH("/:id/assign-class", studentHandlers.AssignClass)
+
+			// Student leave hooks nested under student resource context
+			students.POST("/:id/leave-requests", leaveHandlers.CreateStudentLeaveRequest)
+			students.GET("/:id/leave-requests", leaveHandlers.GetStudentLeaveHistory)
+		}
+
+		// Class & Timetable endpoints
+		classes := v1.Group("/classes")
+		{
+			classes.POST("", classHandlers.CreateClass)
+			classes.GET("", classHandlers.ListClasses)
+			classes.PATCH("/:id/teacher", classHandlers.AssignTeacher)
+			classes.PATCH("/:id/substitute", classHandlers.ToggleSubstitute)
+			classes.PUT("/:id/timetable/:day/:period", classHandlers.UpsertTimetableSlot)
+		}
+
+		// Top-level Leave administration endpoints
+		v1.PATCH("/leave-requests/:id", leaveHandlers.UpdateStudentLeaveStatus)
+		v1.PATCH("/teacher-leave-requests/:id", leaveHandlers.UpdateTeacherLeaveStatus)
+
+		// Teacher personal workspace routes
+		teachers := v1.Group("/teachers")
+		{
+			teachers.POST("/me/leave-requests", leaveHandlers.CreateTeacherLeaveRequest)
+			teachers.GET("/me/leave-requests", leaveHandlers.GetMyTeacherLeaveRequests)
+		}
 
 		// ==========================================
 		// ENG B TRACK: Attendance, Finance, Progress
@@ -95,14 +135,6 @@ func requestLogger(container *Container) gin.HandlerFunc {
 }
 
 // registerHealthRoute registers GET /health.
-//
-// @Summary Health check
-// @Description Checks database connectivity and reports service status
-// @Tags system
-// @Produce json
-// @Success 200 {object} map[string]string
-// @Failure 503 {object} map[string]string
-// @Router /health [get]
 func registerHealthRoute(r *gin.Engine, container *Container) {
 	r.GET("/health", func(c *gin.Context) {
 		if err := database.Ping(container.DB); err != nil {

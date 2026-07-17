@@ -68,14 +68,30 @@ func TestHealthEndpoint(t *testing.T) {
 	}
 	limiter := middleware.NewRateLimiter()
 
-	// Initialize all required handlers for the 6-parameter NewRouter signature
+	// Initialize all required production domains
 	authHandlers := handlers.NewAuthHandlers(db)
 	auditLogger := services.NewAuditLogger(db)
 	financeHandlers := handlers.NewFinanceHandlers(db, auditLogger)
 	progressHandlers := handlers.NewProgressHandlers(db, auditLogger)
 
-	// Wired up with all 6 mandated parameters
-	router := app.NewRouter(container, authMW, limiter, authHandlers, financeHandlers, progressHandlers)
+	// Live ledger automation for production student flows
+	feeService := services.NewFeeLedgerService()
+	studentHandlers := handlers.NewStudentHandlers(db, auditLogger, feeService, cfg.SupabaseURL, "mock-key")
+	classHandlers := handlers.NewClassHandlers(db, auditLogger)
+	leaveHandlers := handlers.NewLeaveHandlers(db, auditLogger)
+
+	// Fully satisfied 9-parameter router signature
+	router := app.NewRouter(
+		container,
+		authMW,
+		limiter,
+		authHandlers,
+		financeHandlers,
+		progressHandlers,
+		studentHandlers,
+		classHandlers,
+		leaveHandlers,
+	)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()

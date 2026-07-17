@@ -149,6 +149,12 @@ func (h *LeaveHandlers) GetStudentLeaveHistory(c *gin.Context) {
 }
 
 func (h *LeaveHandlers) UpdateStudentLeaveStatus(c *gin.Context) {
+	requestID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		apierrors.BadRequest(c, "invalid leave request id format")
+		return
+	}
+
 	var req UpdateLeaveStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		apierrors.ValidationFailed(c, err.Error())
@@ -166,7 +172,7 @@ func (h *LeaveHandlers) UpdateStudentLeaveStatus(c *gin.Context) {
 	}
 
 	var leave models.LeaveRequest
-	if err := h.db.WithContext(c.Request.Context()).First(&leave, c.Param("id")).Error; err != nil {
+	if err := h.db.WithContext(c.Request.Context()).First(&leave, requestID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			apierrors.NotFound(c, "leave request")
 			return
@@ -267,6 +273,12 @@ func (h *LeaveHandlers) GetMyTeacherLeaveRequests(c *gin.Context) {
 }
 
 func (h *LeaveHandlers) UpdateTeacherLeaveStatus(c *gin.Context) {
+	requestID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		apierrors.BadRequest(c, "invalid leave request id format")
+		return
+	}
+
 	var req UpdateLeaveStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		apierrors.ValidationFailed(c, err.Error())
@@ -284,7 +296,7 @@ func (h *LeaveHandlers) UpdateTeacherLeaveStatus(c *gin.Context) {
 	}
 
 	var leave models.TeacherLeaveRequest
-	if err := h.db.WithContext(c.Request.Context()).First(&leave, c.Param("id")).Error; err != nil {
+	if err := h.db.WithContext(c.Request.Context()).First(&leave, requestID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			apierrors.NotFound(c, "teacher leave request")
 			return
@@ -303,7 +315,24 @@ func (h *LeaveHandlers) UpdateTeacherLeaveStatus(c *gin.Context) {
 	leave.ReviewedBy = &actorID
 	leave.ReviewedAt = &now
 
-	if err := h.db.WithContext(c.Request.Context()).Save(&leave).Error; err != nil {
+	// Using a transaction since approving a teacher leave side-effects the Class assignment state
+	err = h.db.WithContext(c.Request.Context()).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&leave).Error; err != nil {
+			return err
+		}
+
+		// Cross-file coordination logic: If approved, auto-activate substitute coverage for classes this teacher teaches
+		if leave.Status == leaveStatusApproved {
+			if err := tx.Model(&models.Class{}).
+				Where("teacher_id = ?", leave.TeacherID).
+				Update("substitute_active", true).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
 		apierrors.Internal(c, err)
 		return
 	}

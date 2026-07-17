@@ -62,14 +62,14 @@ type UpsertTimetableSlotRequest struct {
 //
 // @Summary      Create a class
 // @Tags         classes
-// @Accept       json
+// @Accept        json
 // @Produce      json
 // @Param        body body CreateClassRequest true "Class name"
 // @Success      201 {object} models.Class
 // @Failure      400 {object} apierrors.ErrorResponse
 // @Failure      403 {object} apierrors.ErrorResponse
-// @Security     BearerAuth
-// @Router       /api/classes [post]
+// @Security      BearerAuth
+// @Router        /api/classes [post]
 func (h *ClassHandlers) CreateClass(c *gin.Context) {
 	// --- Validate input ---
 	var req CreateClassRequest
@@ -79,8 +79,6 @@ func (h *ClassHandlers) CreateClass(c *gin.Context) {
 	}
 
 	// --- Role context ---
-	// RequireRoles(...) sits in router.go in front of this route; trust
-	// the context it injected rather than re-querying for freshness.
 	actorID, ok := middleware.GetUserID(c)
 	if !ok {
 		apierrors.Unauthorized(c)
@@ -96,7 +94,7 @@ func (h *ClassHandlers) CreateClass(c *gin.Context) {
 
 	// --- Audit (fail-open) ---
 	if err := h.auditLogger.Log(c.Request.Context(), actorID, services.AuditCreate, "class", class.ID, nil, class); err != nil {
-		fmt.Printf("[ALERT] audit log write failed for class create id=%d: %v\n", class.ID, err)
+		h.auditLogger.AlertFailure("class", class.ID, services.AuditCreate, err)
 	}
 
 	// --- Response ---
@@ -110,8 +108,8 @@ func (h *ClassHandlers) CreateClass(c *gin.Context) {
 // @Produce      json
 // @Success      200 {array} models.Class
 // @Failure      403 {object} apierrors.ErrorResponse
-// @Security     BearerAuth
-// @Router       /api/classes [get]
+// @Security      BearerAuth
+// @Router        /api/classes [get]
 func (h *ClassHandlers) ListClasses(c *gin.Context) {
 	var classes []models.Class
 	if err := h.db.WithContext(c.Request.Context()).Find(&classes).Error; err != nil {
@@ -125,7 +123,7 @@ func (h *ClassHandlers) ListClasses(c *gin.Context) {
 //
 // @Summary      Assign lead teacher to a class
 // @Tags         classes
-// @Accept       json
+// @Accept        json
 // @Produce      json
 // @Param        id path uint true "Class ID"
 // @Param        body body AssignTeacherRequest true "Teacher to assign"
@@ -133,8 +131,8 @@ func (h *ClassHandlers) ListClasses(c *gin.Context) {
 // @Failure      400 {object} apierrors.ErrorResponse
 // @Failure      403 {object} apierrors.ErrorResponse
 // @Failure      404 {object} apierrors.ErrorResponse
-// @Security     BearerAuth
-// @Router       /api/classes/{id}/teacher [patch]
+// @Security      BearerAuth
+// @Router        /api/classes/{id}/teacher [patch]
 func (h *ClassHandlers) AssignTeacher(c *gin.Context) {
 	// --- Validate input ---
 	var req AssignTeacherRequest
@@ -171,7 +169,7 @@ func (h *ClassHandlers) AssignTeacher(c *gin.Context) {
 
 	// --- Audit (fail-open) ---
 	if err := h.auditLogger.Log(c.Request.Context(), actorID, services.AuditUpdate, "class", class.ID, before, class); err != nil {
-		fmt.Printf("[ALERT] audit log write failed for class teacher-assign id=%d: %v\n", class.ID, err)
+		h.auditLogger.AlertFailure("class", class.ID, services.AuditUpdate, err)
 	}
 
 	// --- Response ---
@@ -188,8 +186,8 @@ func (h *ClassHandlers) AssignTeacher(c *gin.Context) {
 // @Success      200 {object} models.Class
 // @Failure      403 {object} apierrors.ErrorResponse
 // @Failure      404 {object} apierrors.ErrorResponse
-// @Security     BearerAuth
-// @Router       /api/classes/{id}/substitute [patch]
+// @Security      BearerAuth
+// @Router        /api/classes/{id}/substitute [patch]
 func (h *ClassHandlers) ToggleSubstitute(c *gin.Context) {
 	// --- Role context ---
 	actorID, ok := middleware.GetUserID(c)
@@ -219,23 +217,18 @@ func (h *ClassHandlers) ToggleSubstitute(c *gin.Context) {
 
 	// --- Audit (fail-open) ---
 	if err := h.auditLogger.Log(c.Request.Context(), actorID, services.AuditUpdate, "class", class.ID, before, class); err != nil {
-		fmt.Printf("[ALERT] audit log write failed for class substitute-toggle id=%d: %v\n", class.ID, err)
+		h.auditLogger.AlertFailure("class", class.ID, services.AuditUpdate, err)
 	}
 
 	// --- Response ---
 	c.JSON(http.StatusOK, class)
 }
 
-// UpsertTimetableSlot creates or updates a single timetable slot for a
-// class/day/period, keyed by the business-unique (class_id, day_of_week,
-// period_number) combination enforced at the DB level. Looks the slot up
-// by that composite key first so the surrogate ID can be resolved for
-// Save (update path) or left zero for Create (insert path) — that
-// resolved ID is also what gets logged as the audit entity_id.
+// UpsertTimetableSlot creates or updates a single timetable slot.
 //
 // @Summary      Upsert a timetable slot
 // @Tags         classes
-// @Accept       json
+// @Accept        json
 // @Produce      json
 // @Param        id path uint true "Class ID"
 // @Param        day path string true "Day of week, e.g. Monday"
@@ -245,8 +238,8 @@ func (h *ClassHandlers) ToggleSubstitute(c *gin.Context) {
 // @Failure      400 {object} apierrors.ErrorResponse
 // @Failure      403 {object} apierrors.ErrorResponse
 // @Failure      404 {object} apierrors.ErrorResponse
-// @Security     BearerAuth
-// @Router       /api/classes/{id}/timetable/{day}/{period} [put]
+// @Security      BearerAuth
+// @Router        /api/classes/{id}/timetable/{day}/{period} [put]
 func (h *ClassHandlers) UpsertTimetableSlot(c *gin.Context) {
 	// --- Validate input ---
 	classID, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -281,8 +274,6 @@ func (h *ClassHandlers) UpsertTimetableSlot(c *gin.Context) {
 	}
 
 	// --- DB operations ---
-	// Confirm the class actually exists before touching its timetable —
-	// avoids silently creating an orphaned slot against a bad class id.
 	var class models.Class
 	if err := h.db.WithContext(c.Request.Context()).First(&class, classID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -312,7 +303,7 @@ func (h *ClassHandlers) UpsertTimetableSlot(c *gin.Context) {
 	var before any
 
 	if found {
-		slot.ID = existing.ID // resolve surrogate ID so Save updates the right row
+		slot.ID = existing.ID
 		if err := h.db.WithContext(c.Request.Context()).Save(&slot).Error; err != nil {
 			apierrors.Internal(c, err)
 			return
@@ -330,7 +321,7 @@ func (h *ClassHandlers) UpsertTimetableSlot(c *gin.Context) {
 
 	// --- Audit (fail-open) ---
 	if err := h.auditLogger.Log(c.Request.Context(), actorID, auditAction, "timetable_slot", slot.ID, before, slot); err != nil {
-		fmt.Printf("[ALERT] audit log write failed for timetable_slot upsert id=%d: %v\n", slot.ID, err)
+		h.auditLogger.AlertFailure("timetable_slot", slot.ID, auditAction, err)
 	}
 
 	// --- Response ---
