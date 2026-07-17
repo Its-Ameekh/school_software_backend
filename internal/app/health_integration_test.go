@@ -14,6 +14,7 @@ import (
 	"github.com/Its-Ameekh/school_software_backend/internal/database"
 	"github.com/Its-Ameekh/school_software_backend/internal/handlers"
 	"github.com/Its-Ameekh/school_software_backend/internal/middleware"
+	"github.com/Its-Ameekh/school_software_backend/internal/services"
 )
 
 // TestDatabaseConnection confirms the DB connection layer works end to
@@ -55,22 +56,26 @@ func TestHealthEndpoint(t *testing.T) {
 		Environment: "test",
 		Port:        "80",
 		DatabaseURL: dbURL,
-		SupabaseURL: "https://mockproject.supabase.co", // Explicitly added to prevent nil config validation issues
+		SupabaseURL: "https://mockproject.supabase.co",
 	}
 
 	container := app.New(cfg, logger, db)
 
-	// Build out Stage 3 infrastructure dependencies inline to fulfill NewRouter parameters
 	ctx := context.Background()
 	authMW, err := middleware.NewAuthMiddleware(ctx, db, cfg.SupabaseURL)
 	if err != nil {
 		t.Fatalf("failed to initialize auth middleware for test: %v", err)
 	}
 	limiter := middleware.NewRateLimiter()
-	authHandlers := handlers.NewAuthHandlers(db)
 
-	// Updated to match the strict four-parameter signature enforced in router.go
-	router := app.NewRouter(container, authMW, limiter, authHandlers)
+	// Initialize all required handlers for the 6-parameter NewRouter signature
+	authHandlers := handlers.NewAuthHandlers(db)
+	auditLogger := services.NewAuditLogger(db)
+	financeHandlers := handlers.NewFinanceHandlers(db, auditLogger)
+	progressHandlers := handlers.NewProgressHandlers(db, auditLogger)
+
+	// Wired up with all 6 mandated parameters
+	router := app.NewRouter(container, authMW, limiter, authHandlers, financeHandlers, progressHandlers)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
