@@ -92,10 +92,13 @@ func NewAuthMiddleware(ctx context.Context, db *gorm.DB, supabaseProjectURL stri
 // RequireAuth returns the Gin middleware itself. Mount it on any route
 // group that needs a logged-in user, e.g.:
 //
-//	protected := router.Group("/api")
-//	protected.Use(authMW.RequireAuth())
+//  protected := router.Group("/api")
+//  protected.Use(authMW.RequireAuth())
 func (a *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// =================================================================
+		// =================================================================
+
 		tokenString, err := extractBearerToken(c.GetHeader("Authorization"))
 		if err != nil {
 			deny(c, "missing or malformed Authorization header")

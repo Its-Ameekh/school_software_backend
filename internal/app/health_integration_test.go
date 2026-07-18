@@ -59,7 +59,8 @@ func TestHealthEndpoint(t *testing.T) {
 		SupabaseURL: "https://mockproject.supabase.co",
 	}
 
-	container := app.New(cfg, logger, db)
+	// Satisfy Stage 5 signature by appending nil for the *s3.Client
+	container := app.New(cfg, logger, db, nil)
 
 	ctx := context.Background()
 	authMW, err := middleware.NewAuthMiddleware(ctx, db, cfg.SupabaseURL)
@@ -80,7 +81,7 @@ func TestHealthEndpoint(t *testing.T) {
 	classHandlers := handlers.NewClassHandlers(db, auditLogger)
 	leaveHandlers := handlers.NewLeaveHandlers(db, auditLogger)
 
-	// Fully satisfied 9-parameter router signature
+	// Fully satisfied Stage 5 11-parameter router signature by appending nil for worksheet and gallery handlers
 	router := app.NewRouter(
 		container,
 		authMW,
@@ -91,6 +92,8 @@ func TestHealthEndpoint(t *testing.T) {
 		studentHandlers,
 		classHandlers,
 		leaveHandlers,
+		nil, // worksheetHandlers
+		nil, // galleryHandlers
 	)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)

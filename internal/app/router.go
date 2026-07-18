@@ -24,6 +24,7 @@ import (
 )
 
 // NewRouter builds the Gin engine and wires all middleware and handlers.
+// Updated for Stage 5 to accept WorksheetHandlers and GalleryHandlers.
 func NewRouter(
 	container *Container,
 	authMW *middleware.AuthMiddleware,
@@ -34,6 +35,8 @@ func NewRouter(
 	studentHandlers *handlers.StudentHandlers,
 	classHandlers *handlers.ClassHandlers,
 	leaveHandlers *handlers.LeaveHandlers,
+	worksheetHandlers *handlers.WorksheetHandlers, // Stage 5 Track
+	galleryHandlers *handlers.GalleryHandlers,     // Stage 5 Track
 ) *gin.Engine {
 
 	if container.Config.Environment == "prod" {
@@ -114,6 +117,26 @@ func NewRouter(
 		{
 			progress.POST("/evaluation", progressHandlers.EnterEvaluation)
 			progress.GET("/view", progressHandlers.ViewProgress)
+		}
+
+		// ==========================================
+		// STAGE 5: File Asset Upload Infrastructure
+		// ==========================================
+
+		// Worksheet asset routes[cite: 1]
+		worksheets := v1.Group("/worksheets")
+		{
+			worksheets.POST("/upload-url", worksheetHandlers.UploadURL)   // Get secure presigned link[cite: 1]
+			worksheets.POST("", worksheetHandlers.ConfirmUpload)          // Save database record[cite: 1]
+			worksheets.DELETE("/:id", worksheetHandlers.Delete)           // Hard-delete database & storage[cite: 1]
+		}
+
+		// Gallery photo routes[cite: 1]
+		gallery := v1.Group("/gallery")
+		{
+			gallery.POST("/upload-url", galleryHandlers.UploadURL)       // Get secure presigned link[cite: 1]
+			gallery.POST("", galleryHandlers.ConfirmUpload)              // Save database record[cite: 1]
+			gallery.DELETE("/:id", galleryHandlers.Delete)               // Hard-delete database & storage[cite: 1]
 		}
 	}
 

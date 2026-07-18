@@ -14,21 +14,21 @@ type Config struct {
 	Port        string
 
 	DatabaseURL string // Supabase Postgres connection string
-
 	SupabaseURL string
 
-	R2AccessKey string
-	R2SecretKey string
-	R2Bucket    string
-	R2Endpoint  string
+	R2AccessKey     string
+	R2SecretKey     string
+	R2Bucket        string
+	R2Endpoint      string
+	R2PublicBaseURL string // Stage 5: Target domain used for serving public files[cite: 1]
 }
 
 // Load reads .env (if present) and all required env vars into a Config.
 // It fatals immediately if anything required is missing, so a bad
-// deploy fails at boot instead of failing mysteriously later.
+// deploy fails at boot instead of failing mysteriously later[cite: 1].
 func Load() *Config {
 	// In prod, real env vars are already set by the platform, so a
-	// missing .env file here is fine — don't fatal on that.
+	// missing .env file here is fine — don't fatal on that[cite: 1].
 	if err := godotenv.Load(); err != nil {
 		log.Println("no .env file found, relying on real environment variables")
 	}
@@ -38,13 +38,13 @@ func Load() *Config {
 		Port:        getEnvDefault("PORT", "8080"),
 
 		DatabaseURL: os.Getenv("DATABASE_URL"),
-
 		SupabaseURL: os.Getenv("SUPABASE_URL"),
 
-		R2AccessKey: os.Getenv("R2_ACCESS_KEY"),
-		R2SecretKey: os.Getenv("R2_SECRET_KEY"),
-		R2Bucket:    os.Getenv("R2_BUCKET"),
-		R2Endpoint:  os.Getenv("R2_ENDPOINT"),
+		R2AccessKey:     os.Getenv("R2_ACCESS_KEY"),
+		R2SecretKey:     os.Getenv("R2_SECRET_KEY"),
+		R2Bucket:        os.Getenv("R2_BUCKET"),
+		R2Endpoint:      os.Getenv("R2_ENDPOINT"),
+		R2PublicBaseURL: os.Getenv("R2_PUBLIC_BASE_URL"), // Maps from your updated .env file[cite: 1]
 	}
 
 	cfg.mustValidate()
@@ -53,15 +53,16 @@ func Load() *Config {
 }
 
 // mustValidate fatals with a specific message if any required field
-// is empty. Port/Environment are excluded since they have defaults.
+// is empty. Port/Environment are excluded since they have defaults[cite: 1].
 func (c *Config) mustValidate() {
 	required := map[string]string{
-		"DATABASE_URL":  c.DatabaseURL,
-		"SUPABASE_URL":  c.SupabaseURL,
-		"R2_ACCESS_KEY": c.R2AccessKey,
-		"R2_SECRET_KEY": c.R2SecretKey,
-		"R2_BUCKET":     c.R2Bucket,
-		"R2_ENDPOINT":   c.R2Endpoint,
+		"DATABASE_URL":       c.DatabaseURL,
+		"SUPABASE_URL":       c.SupabaseURL,
+		"R2_ACCESS_KEY":      c.R2AccessKey,
+		"R2_SECRET_KEY":      c.R2SecretKey,
+		"R2_BUCKET":          c.R2Bucket,
+		"R2_ENDPOINT":        c.R2Endpoint,
+		"R2_PUBLIC_BASE_URL": c.R2PublicBaseURL, // Required verification parameter[cite: 1]
 	}
 
 	var missing []string
