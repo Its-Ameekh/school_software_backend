@@ -45,6 +45,18 @@ type ProgressViewResponse struct {
 }
 
 // EnterEvaluation handles adding or updating progress scores and remarks using GORM transactions.
+//
+// @Summary Enter academic evaluations and remarks
+// @Description Upserts student progress scores and global remarks within an isolated database transaction.
+// @Tags progress
+// @Accept json
+// @Produce json
+// @Param request body EnterProgressRequest true "Academic evaluation details"
+// @Success 200 {object} map[string]string "Saved successfully confirmation statement"
+// @Failure 400 {object} apierrors.ErrorResponse
+// @Failure 403 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/progress/evaluation [post]
 func (h *ProgressHandlers) EnterEvaluation(c *gin.Context) {
 	actorID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -142,6 +154,17 @@ func (h *ProgressHandlers) EnterEvaluation(c *gin.Context) {
 }
 
 // ViewProgress fetches evaluations and features deep security gating for parent associations.
+//
+// @Summary View a student's progress scores and remarks
+// @Description Returns the entire academic scorecard tracking matrix for a student ID. Gated for linked child profiles if called by a PARENT role.
+// @Tags progress
+// @Produce json
+// @Param student_id query integer true "Student ID identifier mapping"
+// @Success 200 {object} ProgressViewResponse
+// @Failure 400 {object} apierrors.ErrorResponse
+// @Failure 403 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/progress/view [get]
 func (h *ProgressHandlers) ViewProgress(c *gin.Context) {
 	actorID, ok := middleware.GetUserID(c)
 	if !ok {

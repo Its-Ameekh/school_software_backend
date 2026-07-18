@@ -1,13 +1,424 @@
 basePath: /
 definitions:
-  handlers.ErrorResponse:
+  github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse:
+    properties:
+      code:
+        description: machine-readable, e.g. "FORBIDDEN"
+        type: string
+      details:
+        description: optional extra context, dev-facing
+        type: string
+      error:
+        type: string
+    type: object
+  github_com_Its-Ameekh_school_software_backend_internal_models.Class:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      substituteActive:
+        type: boolean
+      substituteTeacherID:
+        type: integer
+      teacherID:
+        type: integer
+    type: object
+  github_com_Its-Ameekh_school_software_backend_internal_models.LeaveRequest:
+    properties:
+      createdAt:
+        type: string
+      date:
+        type: string
+      id:
+        type: integer
+      reason:
+        type: string
+      requestedBy:
+        description: parent user_id
+        type: integer
+      reviewedAt:
+        type: string
+      reviewedBy:
+        type: integer
+      status:
+        description: PENDING | APPROVED | REJECTED
+        type: string
+      studentID:
+        type: integer
+    type: object
+  github_com_Its-Ameekh_school_software_backend_internal_models.ProgressRemark:
+    properties:
+      remarks:
+        type: string
+      studentID:
+        type: integer
+      term:
+        type: string
+      updatedAt:
+        type: string
+      writtenBy:
+        type: integer
+    type: object
+  github_com_Its-Ameekh_school_software_backend_internal_models.ProgressScore:
+    properties:
+      gradeValue:
+        type: string
+      gradedBy:
+        type: integer
+      id:
+        type: integer
+      maxScore:
+        type: number
+      scoredValue:
+        type: number
+      studentID:
+        type: integer
+      subject:
+        type: string
+      term:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  github_com_Its-Ameekh_school_software_backend_internal_models.Student:
+    properties:
+      allergies:
+        type: string
+      bloodGroup:
+        type: string
+      classID:
+        type: integer
+      createdAt:
+        type: string
+      deletedAt:
+        allOf:
+        - $ref: '#/definitions/gorm.DeletedAt'
+        description: Fixed
+      dob:
+        type: string
+      foodType:
+        type: string
+      fullName:
+        type: string
+      gender:
+        type: string
+      gradeTier:
+        type: string
+      id:
+        type: integer
+      languagesSpoken:
+        type: string
+      rollNumber:
+        type: string
+      specialTalents:
+        type: string
+    type: object
+  github_com_Its-Ameekh_school_software_backend_internal_models.TeacherLeaveRequest:
+    properties:
+      createdAt:
+        type: string
+      fromDate:
+        type: string
+      id:
+        type: integer
+      leaveType:
+        description: Casual | Sick Medical | Emergency Context | Personal Assignment
+        type: string
+      reason:
+        type: string
+      reviewedAt:
+        type: string
+      reviewedBy:
+        type: integer
+      status:
+        description: PENDING | APPROVED | REJECTED
+        type: string
+      teacherID:
+        type: integer
+      toDate:
+        type: string
+    type: object
+  github_com_Its-Ameekh_school_software_backend_internal_models.TimetableSlot:
+    properties:
+      classID:
+        type: integer
+      dayOfWeek:
+        type: string
+      endTime:
+        type: string
+      id:
+        type: integer
+      periodNumber:
+        type: integer
+      room:
+        type: string
+      startTime:
+        type: string
+      subject:
+        type: string
+    type: object
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
+  internal_handlers.AssignClassRequest:
+    properties:
+      class_id:
+        type: integer
+    required:
+    - class_id
+    type: object
+  internal_handlers.AssignTeacherRequest:
+    properties:
+      teacher_id:
+        type: integer
+    required:
+    - teacher_id
+    type: object
+  internal_handlers.CreateClassRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  internal_handlers.CreateStudentLeaveRequestBody:
+    properties:
+      date:
+        description: '"YYYY-MM-DD"'
+        type: string
+      reason:
+        type: string
+    required:
+    - date
+    - reason
+    type: object
+  internal_handlers.CreateStudentRequest:
+    properties:
+      allergies:
+        type: string
+      amount_paid:
+        type: number
+      blood_group:
+        type: string
+      dob:
+        description: '"YYYY-MM-DD"; also doubles as the guardian''s temp password
+          per Stage 3 design'
+        type: string
+      food_type:
+        type: string
+      full_name:
+        type: string
+      gender:
+        type: string
+      grade_tier:
+        type: string
+      guardian_email:
+        type: string
+      guardian_full_name:
+        description: |-
+          Primary guardian — becomes the auth account (role=PARENT) and one
+          Guardian row (StudentID FK'd after the student is created).
+        type: string
+      guardian_occupation:
+        type: string
+      guardian_phone:
+        description: E.164 expected; CreateAuthUser does not normalize this
+        type: string
+      guardian_relationship:
+        description: e.g. "Father", "Mother", "Guardian"
+        type: string
+      languages_spoken:
+        type: string
+      pay_mode:
+        description: |-
+          Admission intake — payment/enrollment details, per the confirmed
+          models.AdmissionIntake columns (this table is NOT admin notes,
+          despite the original blueprint's wording — it's fee/transport
+          intake data).
+        type: string
+      receipt_number:
+        type: string
+      roll_number:
+        description: |-
+          Student — matches the confirmed models.Student columns.
+          RollNumber is unique/not-null in the schema but no generation
+          strategy has been defined anywhere in this project yet (no
+          sequence, no per-grade format). Taken as required input for now;
+          flag if you want this auto-generated instead (e.g. a
+          grade+year+sequence scheme, similar to the PFM-YYYY-NNNN pattern
+          from the earlier Preschool Fee Manager project) — that's a real
+          decision, not something to guess silently.
+        type: string
+      special_talents:
+        type: string
+      transport_pref:
+        description: '"School Van" | "Own"'
+        type: string
+    required:
+    - amount_paid
+    - dob
+    - full_name
+    - gender
+    - grade_tier
+    - guardian_full_name
+    - guardian_phone
+    - guardian_relationship
+    - pay_mode
+    - receipt_number
+    - roll_number
+    - transport_pref
+    type: object
+  internal_handlers.CreateStudentResponse:
+    properties:
+      auth_id:
+        type: string
+      guardian_id:
+        description: Guardian's own PK, distinct from the linked user_id
+        type: integer
+      intake_id:
+        type: integer
+      message:
+        type: string
+      student_id:
+        type: integer
+      user_id:
+        type: integer
+    type: object
+  internal_handlers.CreateTeacherLeaveRequestBody:
+    properties:
+      from_date:
+        description: '"YYYY-MM-DD"'
+        type: string
+      leave_type:
+        description: Casual | Sick Medical | etc.
+        type: string
+      reason:
+        type: string
+      to_date:
+        description: '"YYYY-MM-DD"'
+        type: string
+    required:
+    - from_date
+    - leave_type
+    - reason
+    - to_date
+    type: object
+  internal_handlers.EnterProgressRequest:
+    properties:
+      grade_value:
+        type: string
+      max_score:
+        type: number
+      remark:
+        type: string
+      scored_value:
+        minimum: 0
+        type: number
+      student_id:
+        type: integer
+      subject:
+        type: string
+      term:
+        type: string
+    required:
+    - grade_value
+    - max_score
+    - remark
+    - scored_value
+    - student_id
+    - subject
+    - term
+    type: object
+  internal_handlers.ErrorResponse:
     properties:
       detail:
         type: string
       error:
         type: string
     type: object
-  handlers.MeResponse:
+  internal_handlers.FeeSummaryRecord:
+    properties:
+      amount_due:
+        type: number
+      created_at:
+        type: string
+      fee_term_id:
+        type: integer
+      id:
+        type: integer
+      paid_at:
+        type: string
+      payment_method:
+        type: string
+      status:
+        type: string
+      student_id:
+        type: integer
+      waive_reason:
+        type: string
+    type: object
+  internal_handlers.HistoryRecord:
+    properties:
+      class_id:
+        type: integer
+      date:
+        type: string
+      id:
+        type: integer
+      locked_at:
+        type: string
+      locked_by_principal:
+        type: boolean
+      marked_by:
+        type: integer
+      status:
+        type: string
+      student_id:
+        type: integer
+    type: object
+  internal_handlers.MarkEntry:
+    properties:
+      status:
+        type: string
+      student_id:
+        type: integer
+    required:
+    - status
+    - student_id
+    type: object
+  internal_handlers.MarkRequest:
+    properties:
+      class_id:
+        type: integer
+      date:
+        description: '"YYYY-MM-DD"'
+        type: string
+      entries:
+        items:
+          $ref: '#/definitions/internal_handlers.MarkEntry'
+        minItems: 1
+        type: array
+    required:
+    - class_id
+    - date
+    - entries
+    type: object
+  internal_handlers.MarkResponse:
+    properties:
+      failed:
+        items:
+          type: string
+        type: array
+      saved:
+        type: integer
+    type: object
+  internal_handlers.MeResponse:
     properties:
       id:
         type: integer
@@ -18,12 +429,210 @@ definitions:
       role:
         type: string
     type: object
+  internal_handlers.PaymentRequest:
+    properties:
+      ledger_id:
+        type: integer
+      payment_method:
+        type: string
+    required:
+    - ledger_id
+    - payment_method
+    type: object
+  internal_handlers.ProgressViewResponse:
+    properties:
+      remarks:
+        items:
+          $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.ProgressRemark'
+        type: array
+      scores:
+        items:
+          $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.ProgressScore'
+        type: array
+      student_id:
+        type: integer
+    type: object
+  internal_handlers.ReminderBroadcastResponse:
+    properties:
+      broadcasted_ledger_ids:
+        items:
+          type: integer
+        type: array
+      triggered_at:
+        type: string
+    type: object
+  internal_handlers.SubmitRequest:
+    properties:
+      class_id:
+        type: integer
+      date:
+        description: '"YYYY-MM-DD"'
+        type: string
+    required:
+    - class_id
+    - date
+    type: object
+  internal_handlers.SubmitResponse:
+    properties:
+      locked_count:
+        type: integer
+      message:
+        type: string
+    type: object
+  internal_handlers.UpdateLeaveStatusRequest:
+    properties:
+      status:
+        description: APPROVED | REJECTED
+        type: string
+    required:
+    - status
+    type: object
+  internal_handlers.UpsertTimetableSlotRequest:
+    properties:
+      end_time:
+        type: string
+      room:
+        type: string
+      start_time:
+        type: string
+      subject:
+        type: string
+    required:
+    - end_time
+    - start_time
+    - subject
+    type: object
+  internal_handlers.WaiveRequest:
+    properties:
+      ledger_id:
+        type: integer
+      waive_reason:
+        type: string
+    required:
+    - ledger_id
+    - waive_reason
+    type: object
 info:
   contact: {}
-  description: Backend API for the School Software preschool management system.
+  description: Backend API for the School Software platform (Preschool Management
+    System).
   title: School Software API
   version: "1.0"
 paths:
+  /api/attendance/history:
+    get:
+      description: Filters attendance records by student_id and/or class_id, optionally
+        bounded by a from/to date range. PARENT callers must supply student_id and
+        are restricted to their own linked child; class_id-only queries are rejected
+        for PARENT.
+      parameters:
+      - description: Filter by student
+        in: query
+        name: student_id
+        type: integer
+      - description: Filter by class
+        in: query
+        name: class_id
+        type: integer
+      - description: Start date, YYYY-MM-DD
+        in: query
+        name: from
+        type: string
+      - description: End date, YYYY-MM-DD
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_handlers.HistoryRecord'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: View attendance history
+      tags:
+      - attendance
+  /api/attendance/mark:
+    post:
+      consumes:
+      - application/json
+      description: Bulk-upserts attendance for every student entry supplied. Rejects
+        edits to today's attendance after 4:00 PM unless the caller is PRINCIPAL.
+        Queues an SMS notification row on a student's first absence mark for the day,
+        and again if an existing absence is edited back to present.
+      parameters:
+      - description: Class, date, and per-student marks
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.MarkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handlers.MarkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Mark attendance for a class on a given date
+      tags:
+      - attendance
+  /api/attendance/submit:
+    post:
+      consumes:
+      - application/json
+      description: Records that attendance for the given class/date has been submitted,
+        and locks every attendance row for that class/date (sets locked_at) so further
+        edits require PRINCIPAL. Rejects if this class/date was already submitted.
+      parameters:
+      - description: Class and date to submit
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.SubmitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handlers.SubmitResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Submit and lock a class's attendance for a date
+      tags:
+      - attendance
   /api/auth/me:
     get:
       description: Returns the local profile and role of whichever user the bearer
@@ -35,35 +644,676 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.MeResponse'
+            $ref: '#/definitions/internal_handlers.MeResponse'
         "403":
           description: invalid/expired token, or no matching local user
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Get authenticated caller's profile
       tags:
       - auth
-  /health:
+  /api/classes:
     get:
-      description: Checks database connectivity and reports service status
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
-        "503":
-          description: Service Unavailable
+            items:
+              $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.Class'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all classes
+      tags:
+      - classes
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Class name
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.CreateClassRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.Class'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a class
+      tags:
+      - classes
+  /api/classes/{id}/substitute:
+    patch:
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.Class'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Toggle substitute coverage for a class
+      tags:
+      - classes
+  /api/classes/{id}/teacher:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Teacher to assign
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.AssignTeacherRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.Class'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign lead teacher to a class
+      tags:
+      - classes
+  /api/classes/{id}/timetable/{day}/{period}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Day of week, e.g. Monday
+        in: path
+        name: day
+        required: true
+        type: string
+      - description: Period number (1-10)
+        in: path
+        name: period
+        required: true
+        type: integer
+      - description: Slot details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.UpsertTimetableSlotRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.TimetableSlot'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upsert a timetable slot
+      tags:
+      - classes
+  /api/finance/payment:
+    post:
+      consumes:
+      - application/json
+      description: Marks a student_fee_ledger row PAID. payment_method is restricted
+        to 'bank' or 'desk' for v1. Rejects if the ledger entry is already PAID.
+      parameters:
+      - description: Ledger entry and payment method
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.PaymentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handlers.FeeSummaryRecord'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Record a manual payment against a fee ledger entry
+      tags:
+      - finance
+  /api/finance/reminders:
+    post:
+      description: Finds all PENDING fee ledger rows where the fee term's due date
+        has passed, notes the event in the audit log, and returns the list of affected
+        IDs.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handlers.ReminderBroadcastResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Broadcast payment reminders for overdue fees
+      tags:
+      - finance
+  /api/finance/summary:
+    get:
+      description: Returns every student_fee_ledger row for the given student. PARENT
+        callers are restricted to their own linked child.
+      parameters:
+      - description: Student to summarize
+        in: query
+        name: student_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_handlers.FeeSummaryRecord'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: View a student's fee ledger summary
+      tags:
+      - finance
+  /api/finance/waive:
+    post:
+      consumes:
+      - application/json
+      description: Marks a student_fee_ledger row WAIVED. waive_reason is mandatory.
+        Restricted to PRINCIPAL. Rejects if the ledger entry is already PAID or already
+        WAIVED.
+      parameters:
+      - description: Ledger entry and mandatory reason
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.WaiveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handlers.FeeSummaryRecord'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Waive a student's fee
+      tags:
+      - finance
+  /api/leaves/student/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Leave Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Status update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.UpdateLeaveStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.LeaveRequest'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update student leave request status
+      tags:
+      - leave
+  /api/leaves/teacher/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Leave Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Status update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.UpdateLeaveStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.TeacherLeaveRequest'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update teacher leave request status
+      tags:
+      - leave
+  /api/progress/evaluation:
+    post:
+      consumes:
+      - application/json
+      description: Upserts student progress scores and global remarks within an isolated
+        database transaction.
+      parameters:
+      - description: Academic evaluation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.EnterProgressRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Saved successfully confirmation statement
           schema:
             additionalProperties:
               type: string
             type: object
-      summary: Health check
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Enter academic evaluations and remarks
       tags:
-      - system
+      - progress
+  /api/progress/view:
+    get:
+      description: Returns the entire academic scorecard tracking matrix for a student
+        ID. Gated for linked child profiles if called by a PARENT role.
+      parameters:
+      - description: Student ID identifier mapping
+        in: query
+        name: student_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handlers.ProgressViewResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: View a student's progress scores and remarks
+      tags:
+      - progress
+  /api/students:
+    post:
+      consumes:
+      - application/json
+      description: Provisions the primary guardian's Supabase auth account, then creates
+        student, guardian, and admission_intake rows in a single transaction, and
+        triggers termly fee ledger generation.
+      parameters:
+      - description: Admission intake payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.CreateStudentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_handlers.CreateStudentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Admit a new student
+      tags:
+      - students
+  /api/students/{id}/assign-class:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Target class
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.AssignClassRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.Student'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign a student to a class
+      tags:
+      - students
+  /api/students/{id}/leave:
+    get:
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.LeaveRequest'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get student leave history
+      tags:
+      - leave
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Leave request payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.CreateStudentLeaveRequestBody'
+      produces:
+      - application/json
+      responses:
+        "21":
+          description: ""
+          schema:
+            type: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a student leave request
+      tags:
+      - leave
+  /api/students/unassigned:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.Student'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List unassigned students
+      tags:
+      - students
+  /api/teachers/leave:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.TeacherLeaveRequest'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get logged-in teacher's leave history
+      tags:
+      - leave
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Leave request payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.CreateTeacherLeaveRequestBody'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.TeacherLeaveRequest'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a teacher leave request
+      tags:
+      - leave
 swagger: "2.0"

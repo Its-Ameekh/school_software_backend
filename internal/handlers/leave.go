@@ -55,6 +55,20 @@ type UpdateLeaveStatusRequest struct {
 
 // ==================== STUDENT LEAVE ====================
 
+// CreateStudentLeaveRequest creates a leave request for a student.
+//
+// @Summary Create a student leave request
+// @Tags leave
+// @Accept json
+// @Produce json
+// @Param id path integer true "Student ID"
+// @Param request body CreateStudentLeaveRequestBody true "Leave request payload"
+// @Success 21 Created {object} models.LeaveRequest
+// @Failure 400 {object} apierrors.ErrorResponse
+// @Failure 401 {object} apierrors.ErrorResponse
+// @Failure 403 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/students/{id}/leave [post]
 func (h *LeaveHandlers) CreateStudentLeaveRequest(c *gin.Context) {
 	studentID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -111,6 +125,18 @@ func (h *LeaveHandlers) CreateStudentLeaveRequest(c *gin.Context) {
 	c.JSON(http.StatusCreated, leave)
 }
 
+// GetStudentLeaveHistory fetches a student's leave requests.
+//
+// @Summary Get student leave history
+// @Tags leave
+// @Produce json
+// @Param id path integer true "Student ID"
+// @Success 200 {array} models.LeaveRequest
+// @Failure 400 {object} apierrors.ErrorResponse
+// @Failure 401 {object} apierrors.ErrorResponse
+// @Failure 403 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/students/{id}/leave [get]
 func (h *LeaveHandlers) GetStudentLeaveHistory(c *gin.Context) {
 	studentID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -148,6 +174,21 @@ func (h *LeaveHandlers) GetStudentLeaveHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, leaves)
 }
 
+// UpdateStudentLeaveStatus updates a student leave request status.
+//
+// @Summary Update student leave request status
+// @Tags leave
+// @Accept json
+// @Produce json
+// @Param id path integer true "Leave Request ID"
+// @Param request body UpdateLeaveStatusRequest true "Status update payload"
+// @Success 200 {object} models.LeaveRequest
+// @Failure 400 {object} apierrors.ErrorResponse
+// @Failure 401 {object} apierrors.ErrorResponse
+// @Failure 404 {object} apierrors.ErrorResponse
+// @Failure 409 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/leaves/student/{id}/status [patch]
 func (h *LeaveHandlers) UpdateStudentLeaveStatus(c *gin.Context) {
 	requestID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -205,6 +246,18 @@ func (h *LeaveHandlers) UpdateStudentLeaveStatus(c *gin.Context) {
 
 // ==================== TEACHER LEAVE ====================
 
+// CreateTeacherLeaveRequest creates a leave request for a teacher.
+//
+// @Summary Create a teacher leave request
+// @Tags leave
+// @Accept json
+// @Produce json
+// @Param request body CreateTeacherLeaveRequestBody true "Leave request payload"
+// @Success 201 {object} models.TeacherLeaveRequest
+// @Failure 400 {object} apierrors.ErrorResponse
+// @Failure 401 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/teachers/leave [post]
 func (h *LeaveHandlers) CreateTeacherLeaveRequest(c *gin.Context) {
 	var req CreateTeacherLeaveRequestBody
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -253,6 +306,15 @@ func (h *LeaveHandlers) CreateTeacherLeaveRequest(c *gin.Context) {
 	c.JSON(http.StatusCreated, leave)
 }
 
+// GetMyTeacherLeaveRequests lists leave requests for the logged-in teacher.
+//
+// @Summary Get logged-in teacher's leave history
+// @Tags leave
+// @Produce json
+// @Success 200 {array} models.TeacherLeaveRequest
+// @Failure 401 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/teachers/leave [get]
 func (h *LeaveHandlers) GetMyTeacherLeaveRequests(c *gin.Context) {
 	actorID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -272,6 +334,21 @@ func (h *LeaveHandlers) GetMyTeacherLeaveRequests(c *gin.Context) {
 	c.JSON(http.StatusOK, leaves)
 }
 
+// UpdateTeacherLeaveStatus updates a teacher leave request status.
+//
+// @Summary Update teacher leave request status
+// @Tags leave
+// @Accept json
+// @Produce json
+// @Param id path integer true "Leave Request ID"
+// @Param request body UpdateLeaveStatusRequest true "Status update payload"
+// @Success 200 {object} models.TeacherLeaveRequest
+// @Failure 400 {object} apierrors.ErrorResponse
+// @Failure 401 {object} apierrors.ErrorResponse
+// @Failure 404 {object} apierrors.ErrorResponse
+// @Failure 409 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/leaves/teacher/{id}/status [patch]
 func (h *LeaveHandlers) UpdateTeacherLeaveStatus(c *gin.Context) {
 	requestID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
