@@ -104,21 +104,18 @@ type AssignClassRequest struct {
 // AdmissionIntake — Guardian.StudentID is the FK direction (a guardian
 // belongs to a student, not the reverse), so Student must exist first.
 //
-// @Summary      Admit a new student
-// @Description  Provisions the primary guardian's Supabase auth account,
-//               then creates student, guardian, and admission_intake rows
-//               in a single transaction, and triggers termly fee ledger
-//               generation.
-// @Tags         students
-// @Accept       json
-// @Produce      json
-// @Param        body body CreateStudentRequest true "Admission intake payload"
-// @Success      201 {object} CreateStudentResponse
-// @Failure      400 {object} apierrors.ErrorResponse
-// @Failure      403 {object} apierrors.ErrorResponse
-// @Failure      500 {object} apierrors.ErrorResponse
-// @Security     BearerAuth
-// @Router       /api/students [post]
+// @Summary Admit a new student
+// @Description Provisions the primary guardian's Supabase auth account, then creates student, guardian, and admission_intake rows in a single transaction, and triggers termly fee ledger generation.
+// @Tags students
+// @Accept json
+// @Produce json
+// @Param request body CreateStudentRequest true "Admission intake payload"
+// @Success 201 {object} CreateStudentResponse
+// @Failure 400 {object} apierrors.ErrorResponse
+// @Failure 403 {object} apierrors.ErrorResponse
+// @Failure 500 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/students [post]
 func (h *StudentHandlers) CreateStudent(c *gin.Context) {
 	// --- 1. Validate input ---
 	var req CreateStudentRequest
@@ -279,13 +276,13 @@ func (h *StudentHandlers) CreateStudent(c *gin.Context) {
 
 // GetUnassignedStudents lists students with no class assignment yet.
 //
-// @Summary      List unassigned students
-// @Tags         students
-// @Produce      json
-// @Success      200 {array} models.Student
-// @Failure      403 {object} apierrors.ErrorResponse
-// @Security     BearerAuth
-// @Router       /api/students/unassigned [get]
+// @Summary List unassigned students
+// @Tags students
+// @Produce json
+// @Success 200 {array} models.Student
+// @Failure 403 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/students/unassigned [get]
 func (h *StudentHandlers) GetUnassignedStudents(c *gin.Context) {
 	var students []models.Student
 	// models.Student has a confirmed gorm.DeletedAt column, so this
@@ -299,18 +296,18 @@ func (h *StudentHandlers) GetUnassignedStudents(c *gin.Context) {
 
 // AssignClass places a previously-unassigned student into a class.
 //
-// @Summary      Assign a student to a class
-// @Tags         students
-// @Accept       json
-// @Produce      json
-// @Param        id path uint true "Student ID"
-// @Param        body body AssignClassRequest true "Target class"
-// @Success      200 {object} models.Student
-// @Failure      400 {object} apierrors.ErrorResponse
-// @Failure      403 {object} apierrors.ErrorResponse
-// @Failure      404 {object} apierrors.ErrorResponse
-// @Security     BearerAuth
-// @Router       /api/students/{id}/assign-class [patch]
+// @Summary Assign a student to a class
+// @Tags students
+// @Accept json
+// @Produce json
+// @Param id path integer true "Student ID"
+// @Param request body AssignClassRequest true "Target class"
+// @Success 200 {object} models.Student
+// @Failure 400 {object} apierrors.ErrorResponse
+// @Failure 403 {object} apierrors.ErrorResponse
+// @Failure 404 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/students/{id}/assign-class [patch]
 func (h *StudentHandlers) AssignClass(c *gin.Context) {
 	studentID := c.Param("id")
 

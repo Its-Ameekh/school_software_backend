@@ -60,16 +60,16 @@ type UpsertTimetableSlotRequest struct {
 
 // CreateClass creates a new class entity.
 //
-// @Summary      Create a class
-// @Tags         classes
-// @Accept        json
-// @Produce      json
-// @Param        body body CreateClassRequest true "Class name"
-// @Success      201 {object} models.Class
-// @Failure      400 {object} apierrors.ErrorResponse
-// @Failure      403 {object} apierrors.ErrorResponse
-// @Security      BearerAuth
-// @Router        /api/classes [post]
+// @Summary Create a class
+// @Tags classes
+// @Accept json
+// @Produce json
+// @Param request body CreateClassRequest true "Class name"
+// @Success 201 {object} models.Class
+// @Failure 400 {object} apierrors.ErrorResponse
+// @Failure 403 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/classes [post]
 func (h *ClassHandlers) CreateClass(c *gin.Context) {
 	// --- Validate input ---
 	var req CreateClassRequest
@@ -103,13 +103,13 @@ func (h *ClassHandlers) CreateClass(c *gin.Context) {
 
 // ListClasses returns every class.
 //
-// @Summary      List all classes
-// @Tags         classes
-// @Produce      json
-// @Success      200 {array} models.Class
-// @Failure      403 {object} apierrors.ErrorResponse
-// @Security      BearerAuth
-// @Router        /api/classes [get]
+// @Summary List all classes
+// @Tags classes
+// @Produce json
+// @Success 200 {array} models.Class
+// @Failure 403 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/classes [get]
 func (h *ClassHandlers) ListClasses(c *gin.Context) {
 	var classes []models.Class
 	if err := h.db.WithContext(c.Request.Context()).Find(&classes).Error; err != nil {
@@ -121,18 +121,18 @@ func (h *ClassHandlers) ListClasses(c *gin.Context) {
 
 // AssignTeacher sets a class's lead teacher.
 //
-// @Summary      Assign lead teacher to a class
-// @Tags         classes
-// @Accept        json
-// @Produce      json
-// @Param        id path uint true "Class ID"
-// @Param        body body AssignTeacherRequest true "Teacher to assign"
-// @Success      200 {object} models.Class
-// @Failure      400 {object} apierrors.ErrorResponse
-// @Failure      403 {object} apierrors.ErrorResponse
-// @Failure      404 {object} apierrors.ErrorResponse
-// @Security      BearerAuth
-// @Router        /api/classes/{id}/teacher [patch]
+// @Summary Assign lead teacher to a class
+// @Tags classes
+// @Accept json
+// @Produce json
+// @Param id path integer true "Class ID"
+// @Param request body AssignTeacherRequest true "Teacher to assign"
+// @Success 200 {object} models.Class
+// @Failure 400 {object} apierrors.ErrorResponse
+// @Failure 403 {object} apierrors.ErrorResponse
+// @Failure 404 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/classes/{id}/teacher [patch]
 func (h *ClassHandlers) AssignTeacher(c *gin.Context) {
 	// --- Validate input ---
 	var req AssignTeacherRequest
@@ -179,15 +179,15 @@ func (h *ClassHandlers) AssignTeacher(c *gin.Context) {
 // ToggleSubstitute flips a class's substitute-coverage flag. Pure
 // toggle — no request body, flips whatever the current value is.
 //
-// @Summary      Toggle substitute coverage for a class
-// @Tags         classes
-// @Produce      json
-// @Param        id path uint true "Class ID"
-// @Success      200 {object} models.Class
-// @Failure      403 {object} apierrors.ErrorResponse
-// @Failure      404 {object} apierrors.ErrorResponse
-// @Security      BearerAuth
-// @Router        /api/classes/{id}/substitute [patch]
+// @Summary Toggle substitute coverage for a class
+// @Tags classes
+// @Produce json
+// @Param id path integer true "Class ID"
+// @Success 200 {object} models.Class
+// @Failure 403 {object} apierrors.ErrorResponse
+// @Failure 404 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/classes/{id}/substitute [patch]
 func (h *ClassHandlers) ToggleSubstitute(c *gin.Context) {
 	// --- Role context ---
 	actorID, ok := middleware.GetUserID(c)
@@ -226,20 +226,20 @@ func (h *ClassHandlers) ToggleSubstitute(c *gin.Context) {
 
 // UpsertTimetableSlot creates or updates a single timetable slot.
 //
-// @Summary      Upsert a timetable slot
-// @Tags         classes
-// @Accept        json
-// @Produce      json
-// @Param        id path uint true "Class ID"
-// @Param        day path string true "Day of week, e.g. Monday"
-// @Param        period path int true "Period number (1-10)"
-// @Param        body body UpsertTimetableSlotRequest true "Slot details"
-// @Success      200 {object} models.TimetableSlot
-// @Failure      400 {object} apierrors.ErrorResponse
-// @Failure      403 {object} apierrors.ErrorResponse
-// @Failure      404 {object} apierrors.ErrorResponse
-// @Security      BearerAuth
-// @Router        /api/classes/{id}/timetable/{day}/{period} [put]
+// @Summary Upsert a timetable slot
+// @Tags classes
+// @Accept json
+// @Produce json
+// @Param id path integer true "Class ID"
+// @Param day path string true "Day of week, e.g. Monday"
+// @Param period path integer true "Period number (1-10)"
+// @Param request body UpsertTimetableSlotRequest true "Slot details"
+// @Success 200 {object} models.TimetableSlot
+// @Failure 400 {object} apierrors.ErrorResponse
+// @Failure 403 {object} apierrors.ErrorResponse
+// @Failure 404 {object} apierrors.ErrorResponse
+// @Security BearerAuth
+// @Router /api/classes/{id}/timetable/{day}/{period} [put]
 func (h *ClassHandlers) UpsertTimetableSlot(c *gin.Context) {
 	// --- Validate input ---
 	classID, err := strconv.ParseUint(c.Param("id"), 10, 64)

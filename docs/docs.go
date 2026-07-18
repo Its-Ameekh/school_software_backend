@@ -15,6 +15,174 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/attendance/history": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Filters attendance records by student_id and/or class_id, optionally bounded by a from/to date range. PARENT callers must supply student_id and are restricted to their own linked child; class_id-only queries are rejected for PARENT.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attendance"
+                ],
+                "summary": "View attendance history",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Filter by student",
+                        "name": "student_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by class",
+                        "name": "class_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date, YYYY-MM-DD",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date, YYYY-MM-DD",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_handlers.HistoryRecord"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/attendance/mark": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Bulk-upserts attendance for every student entry supplied. Rejects edits to today's attendance after 4:00 PM unless the caller is PRINCIPAL. Queues an SMS notification row on a student's first absence mark for the day, and again if an existing absence is edited back to present.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attendance"
+                ],
+                "summary": "Mark attendance for a class on a given date",
+                "parameters": [
+                    {
+                        "description": "Class, date, and per-student marks",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.MarkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.MarkResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/attendance/submit": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Records that attendance for the given class/date has been submitted, and locks every attendance row for that class/date (sets locked_at) so further edits require PRINCIPAL. Rejects if this class/date was already submitted.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attendance"
+                ],
+                "summary": "Submit and lock a class's attendance for a date",
+                "parameters": [
+                    {
+                        "description": "Class and date to submit",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.SubmitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.SubmitResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/auth/me": {
             "get": {
                 "security": [
@@ -34,31 +202,636 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.MeResponse"
+                            "$ref": "#/definitions/internal_handlers.MeResponse"
                         }
                     },
                     "403": {
                         "description": "invalid/expired token, or no matching local user",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/health": {
+        "/api/classes": {
             "get": {
-                "description": "Checks database connectivity and reports service status",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "system"
+                    "classes"
                 ],
-                "summary": "Health check",
+                "summary": "List all classes",
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.Class"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Create a class",
+                "parameters": [
+                    {
+                        "description": "Class name",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.CreateClassRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.Class"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/classes/{id}/substitute": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Toggle substitute coverage for a class",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Class ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.Class"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/classes/{id}/teacher": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Assign lead teacher to a class",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Class ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Teacher to assign",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.AssignTeacherRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.Class"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/classes/{id}/timetable/{day}/{period}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Upsert a timetable slot",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Class ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Day of week, e.g. Monday",
+                        "name": "day",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Period number (1-10)",
+                        "name": "period",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Slot details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.UpsertTimetableSlotRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.TimetableSlot"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/finance/payment": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Marks a student_fee_ledger row PAID. payment_method is restricted to 'bank' or 'desk' for v1. Rejects if the ledger entry is already PAID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "finance"
+                ],
+                "summary": "Record a manual payment against a fee ledger entry",
+                "parameters": [
+                    {
+                        "description": "Ledger entry and payment method",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.PaymentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.FeeSummaryRecord"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/finance/reminders": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Finds all PENDING fee ledger rows where the fee term's due date has passed, notes the event in the audit log, and returns the list of affected IDs.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "finance"
+                ],
+                "summary": "Broadcast payment reminders for overdue fees",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ReminderBroadcastResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/finance/summary": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns every student_fee_ledger row for the given student. PARENT callers are restricted to their own linked child.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "finance"
+                ],
+                "summary": "View a student's fee ledger summary",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student to summarize",
+                        "name": "student_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_handlers.FeeSummaryRecord"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/finance/waive": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Marks a student_fee_ledger row WAIVED. waive_reason is mandatory. Restricted to PRINCIPAL. Rejects if the ledger entry is already PAID or already WAIVED.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "finance"
+                ],
+                "summary": "Waive a student's fee",
+                "parameters": [
+                    {
+                        "description": "Ledger entry and mandatory reason",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.WaiveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.FeeSummaryRecord"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/leaves/student/{id}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "leave"
+                ],
+                "summary": "Update student leave request status",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Leave Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.UpdateLeaveStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.LeaveRequest"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/leaves/teacher/{id}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "leave"
+                ],
+                "summary": "Update teacher leave request status",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Leave Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.UpdateLeaveStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.TeacherLeaveRequest"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/progress/evaluation": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upserts student progress scores and global remarks within an isolated database transaction.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progress"
+                ],
+                "summary": "Enter academic evaluations and remarks",
+                "parameters": [
+                    {
+                        "description": "Academic evaluation details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.EnterProgressRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Saved successfully confirmation statement",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -66,13 +839,411 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "503": {
-                        "description": "Service Unavailable",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/progress/view": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the entire academic scorecard tracking matrix for a student ID. Gated for linked child profiles if called by a PARENT role.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progress"
+                ],
+                "summary": "View a student's progress scores and remarks",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student ID identifier mapping",
+                        "name": "student_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ProgressViewResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/students": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Provisions the primary guardian's Supabase auth account, then creates student, guardian, and admission_intake rows in a single transaction, and triggers termly fee ledger generation.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "students"
+                ],
+                "summary": "Admit a new student",
+                "parameters": [
+                    {
+                        "description": "Admission intake payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.CreateStudentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.CreateStudentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/students/unassigned": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "students"
+                ],
+                "summary": "List unassigned students",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.Student"
                             }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/students/{id}/assign-class": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "students"
+                ],
+                "summary": "Assign a student to a class",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Target class",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.AssignClassRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.Student"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/students/{id}/leave": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "leave"
+                ],
+                "summary": "Get student leave history",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.LeaveRequest"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "leave"
+                ],
+                "summary": "Create a student leave request",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Leave request payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.CreateStudentLeaveRequestBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "21": {
+                        "description": "",
+                        "schema": {
+                            "type": "Created"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/teachers/leave": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "leave"
+                ],
+                "summary": "Get logged-in teacher's leave history",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.TeacherLeaveRequest"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "leave"
+                ],
+                "summary": "Create a teacher leave request",
+                "parameters": [
+                    {
+                        "description": "Leave request payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.CreateTeacherLeaveRequestBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.TeacherLeaveRequest"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse"
                         }
                     }
                 }
@@ -80,7 +1251,477 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handlers.ErrorResponse": {
+        "github_com_Its-Ameekh_school_software_backend_internal_apierrors.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "machine-readable, e.g. \"FORBIDDEN\"",
+                    "type": "string"
+                },
+                "details": {
+                    "description": "optional extra context, dev-facing",
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_Its-Ameekh_school_software_backend_internal_models.Class": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "substituteActive": {
+                    "type": "boolean"
+                },
+                "substituteTeacherID": {
+                    "type": "integer"
+                },
+                "teacherID": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_Its-Ameekh_school_software_backend_internal_models.LeaveRequest": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "requestedBy": {
+                    "description": "parent user_id",
+                    "type": "integer"
+                },
+                "reviewedAt": {
+                    "type": "string"
+                },
+                "reviewedBy": {
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "PENDING | APPROVED | REJECTED",
+                    "type": "string"
+                },
+                "studentID": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_Its-Ameekh_school_software_backend_internal_models.ProgressRemark": {
+            "type": "object",
+            "properties": {
+                "remarks": {
+                    "type": "string"
+                },
+                "studentID": {
+                    "type": "integer"
+                },
+                "term": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "writtenBy": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_Its-Ameekh_school_software_backend_internal_models.ProgressScore": {
+            "type": "object",
+            "properties": {
+                "gradeValue": {
+                    "type": "string"
+                },
+                "gradedBy": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "maxScore": {
+                    "type": "number"
+                },
+                "scoredValue": {
+                    "type": "number"
+                },
+                "studentID": {
+                    "type": "integer"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "term": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_Its-Ameekh_school_software_backend_internal_models.Student": {
+            "type": "object",
+            "properties": {
+                "allergies": {
+                    "type": "string"
+                },
+                "bloodGroup": {
+                    "type": "string"
+                },
+                "classID": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "description": "Fixed",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/gorm.DeletedAt"
+                        }
+                    ]
+                },
+                "dob": {
+                    "type": "string"
+                },
+                "foodType": {
+                    "type": "string"
+                },
+                "fullName": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "gradeTier": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "languagesSpoken": {
+                    "type": "string"
+                },
+                "rollNumber": {
+                    "type": "string"
+                },
+                "specialTalents": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_Its-Ameekh_school_software_backend_internal_models.TeacherLeaveRequest": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "fromDate": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "leaveType": {
+                    "description": "Casual | Sick Medical | Emergency Context | Personal Assignment",
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "reviewedAt": {
+                    "type": "string"
+                },
+                "reviewedBy": {
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "PENDING | APPROVED | REJECTED",
+                    "type": "string"
+                },
+                "teacherID": {
+                    "type": "integer"
+                },
+                "toDate": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_Its-Ameekh_school_software_backend_internal_models.TimetableSlot": {
+            "type": "object",
+            "properties": {
+                "classID": {
+                    "type": "integer"
+                },
+                "dayOfWeek": {
+                    "type": "string"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "periodNumber": {
+                    "type": "integer"
+                },
+                "room": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "gorm.DeletedAt": {
+            "type": "object",
+            "properties": {
+                "time": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if Time is not NULL",
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_handlers.AssignClassRequest": {
+            "type": "object",
+            "required": [
+                "class_id"
+            ],
+            "properties": {
+                "class_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handlers.AssignTeacherRequest": {
+            "type": "object",
+            "required": [
+                "teacher_id"
+            ],
+            "properties": {
+                "teacher_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handlers.CreateClassRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.CreateStudentLeaveRequestBody": {
+            "type": "object",
+            "required": [
+                "date",
+                "reason"
+            ],
+            "properties": {
+                "date": {
+                    "description": "\"YYYY-MM-DD\"",
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.CreateStudentRequest": {
+            "type": "object",
+            "required": [
+                "amount_paid",
+                "dob",
+                "full_name",
+                "gender",
+                "grade_tier",
+                "guardian_full_name",
+                "guardian_phone",
+                "guardian_relationship",
+                "pay_mode",
+                "receipt_number",
+                "roll_number",
+                "transport_pref"
+            ],
+            "properties": {
+                "allergies": {
+                    "type": "string"
+                },
+                "amount_paid": {
+                    "type": "number"
+                },
+                "blood_group": {
+                    "type": "string"
+                },
+                "dob": {
+                    "description": "\"YYYY-MM-DD\"; also doubles as the guardian's temp password per Stage 3 design",
+                    "type": "string"
+                },
+                "food_type": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "grade_tier": {
+                    "type": "string"
+                },
+                "guardian_email": {
+                    "type": "string"
+                },
+                "guardian_full_name": {
+                    "description": "Primary guardian — becomes the auth account (role=PARENT) and one\nGuardian row (StudentID FK'd after the student is created).",
+                    "type": "string"
+                },
+                "guardian_occupation": {
+                    "type": "string"
+                },
+                "guardian_phone": {
+                    "description": "E.164 expected; CreateAuthUser does not normalize this",
+                    "type": "string"
+                },
+                "guardian_relationship": {
+                    "description": "e.g. \"Father\", \"Mother\", \"Guardian\"",
+                    "type": "string"
+                },
+                "languages_spoken": {
+                    "type": "string"
+                },
+                "pay_mode": {
+                    "description": "Admission intake — payment/enrollment details, per the confirmed\nmodels.AdmissionIntake columns (this table is NOT admin notes,\ndespite the original blueprint's wording — it's fee/transport\nintake data).",
+                    "type": "string"
+                },
+                "receipt_number": {
+                    "type": "string"
+                },
+                "roll_number": {
+                    "description": "Student — matches the confirmed models.Student columns.\nRollNumber is unique/not-null in the schema but no generation\nstrategy has been defined anywhere in this project yet (no\nsequence, no per-grade format). Taken as required input for now;\nflag if you want this auto-generated instead (e.g. a\ngrade+year+sequence scheme, similar to the PFM-YYYY-NNNN pattern\nfrom the earlier Preschool Fee Manager project) — that's a real\ndecision, not something to guess silently.",
+                    "type": "string"
+                },
+                "special_talents": {
+                    "type": "string"
+                },
+                "transport_pref": {
+                    "description": "\"School Van\" | \"Own\"",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.CreateStudentResponse": {
+            "type": "object",
+            "properties": {
+                "auth_id": {
+                    "type": "string"
+                },
+                "guardian_id": {
+                    "description": "Guardian's own PK, distinct from the linked user_id",
+                    "type": "integer"
+                },
+                "intake_id": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "student_id": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handlers.CreateTeacherLeaveRequestBody": {
+            "type": "object",
+            "required": [
+                "from_date",
+                "leave_type",
+                "reason",
+                "to_date"
+            ],
+            "properties": {
+                "from_date": {
+                    "description": "\"YYYY-MM-DD\"",
+                    "type": "string"
+                },
+                "leave_type": {
+                    "description": "Casual | Sick Medical | etc.",
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "to_date": {
+                    "description": "\"YYYY-MM-DD\"",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.EnterProgressRequest": {
+            "type": "object",
+            "required": [
+                "grade_value",
+                "max_score",
+                "remark",
+                "scored_value",
+                "student_id",
+                "subject",
+                "term"
+            ],
+            "properties": {
+                "grade_value": {
+                    "type": "string"
+                },
+                "max_score": {
+                    "type": "number"
+                },
+                "remark": {
+                    "type": "string"
+                },
+                "scored_value": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "student_id": {
+                    "type": "integer"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "term": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.ErrorResponse": {
             "type": "object",
             "properties": {
                 "detail": {
@@ -91,7 +1732,121 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.MeResponse": {
+        "internal_handlers.FeeSummaryRecord": {
+            "type": "object",
+            "properties": {
+                "amount_due": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "fee_term_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "paid_at": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "student_id": {
+                    "type": "integer"
+                },
+                "waive_reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.HistoryRecord": {
+            "type": "object",
+            "properties": {
+                "class_id": {
+                    "type": "integer"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "locked_at": {
+                    "type": "string"
+                },
+                "locked_by_principal": {
+                    "type": "boolean"
+                },
+                "marked_by": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "student_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handlers.MarkEntry": {
+            "type": "object",
+            "required": [
+                "status",
+                "student_id"
+            ],
+            "properties": {
+                "status": {
+                    "type": "string"
+                },
+                "student_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handlers.MarkRequest": {
+            "type": "object",
+            "required": [
+                "class_id",
+                "date",
+                "entries"
+            ],
+            "properties": {
+                "class_id": {
+                    "type": "integer"
+                },
+                "date": {
+                    "description": "\"YYYY-MM-DD\"",
+                    "type": "string"
+                },
+                "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/internal_handlers.MarkEntry"
+                    }
+                }
+            }
+        },
+        "internal_handlers.MarkResponse": {
+            "type": "object",
+            "properties": {
+                "failed": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "saved": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handlers.MeResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -107,6 +1862,131 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "internal_handlers.PaymentRequest": {
+            "type": "object",
+            "required": [
+                "ledger_id",
+                "payment_method"
+            ],
+            "properties": {
+                "ledger_id": {
+                    "type": "integer"
+                },
+                "payment_method": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.ProgressViewResponse": {
+            "type": "object",
+            "properties": {
+                "remarks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.ProgressRemark"
+                    }
+                },
+                "scores": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_Its-Ameekh_school_software_backend_internal_models.ProgressScore"
+                    }
+                },
+                "student_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handlers.ReminderBroadcastResponse": {
+            "type": "object",
+            "properties": {
+                "broadcasted_ledger_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "triggered_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.SubmitRequest": {
+            "type": "object",
+            "required": [
+                "class_id",
+                "date"
+            ],
+            "properties": {
+                "class_id": {
+                    "type": "integer"
+                },
+                "date": {
+                    "description": "\"YYYY-MM-DD\"",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.SubmitResponse": {
+            "type": "object",
+            "properties": {
+                "locked_count": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.UpdateLeaveStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "description": "APPROVED | REJECTED",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.UpsertTimetableSlotRequest": {
+            "type": "object",
+            "required": [
+                "end_time",
+                "start_time",
+                "subject"
+            ],
+            "properties": {
+                "end_time": {
+                    "type": "string"
+                },
+                "room": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.WaiveRequest": {
+            "type": "object",
+            "required": [
+                "ledger_id",
+                "waive_reason"
+            ],
+            "properties": {
+                "ledger_id": {
+                    "type": "integer"
+                },
+                "waive_reason": {
+                    "type": "string"
+                }
+            }
         }
     }
 }`
@@ -118,7 +1998,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "School Software API",
-	Description:      "Backend API for the School Software preschool management system.",
+	Description:      "Backend API for the School Software platform (Preschool Management System).",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
