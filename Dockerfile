@@ -8,7 +8,8 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/api
+# Enforce a static amd64 build target to fix the exec format error
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/server ./cmd/api
 
 # ---- Runtime stage ----
 FROM alpine:3.20
