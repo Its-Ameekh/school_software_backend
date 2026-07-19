@@ -1,32 +1,73 @@
 package seed
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"os"
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/Its-Ameekh/school_software_backend/internal/models"
+	"github.com/Its-Ameekh/school_software_backend/internal/services"
 )
 
+// SeedUsers calls the real Supabase GoTrue Admin API using the environment configurations
+// to provision genuine test accounts with verified phone numbers.
 func SeedUsers(db *gorm.DB) ([]models.User, error) {
-	var users []models.User
-	roles := []string{"ADMIN", "TEACHER", "TEACHER", "TEACHER", "GUARDIAN", "GUARDIAN", "GUARDIAN"}
+	ctx := context.Background()
+	supabaseURL := os.Getenv("SUPABASE_URL")
+	serviceRoleKey := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+	if supabaseURL == "" || serviceRoleKey == "" {
+		return nil, fmt.Errorf("seeding requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to be set in your environment")
+	}
+
+	// Definition of real roles mapped to the system design document contract.
+	roles := []string{"PRINCIPAL", "TEACHER", "TEACHER", "TEACHER", "PARENT", "PARENT", "PARENT"}
+	
+	// Default date of birth string used to derive the temporary login password.
+	// Format "YYYY-MM-DD" -> password derived as "01011990" matching temporary policy constraints.
+	mockDOB := "1990-01-01" 
+
+	var seededUsers []models.User
+
+	log.Printf("Starting live provisioning of %d users against Supabase Auth...", len(roles))
+
 	for i, role := range roles {
-		email := fmt.Sprintf("%s%d@starlight.test", role, i+1)
-		users = append(users, models.User{
-			AuthID: uuid.NewString(),
-			Email:  &email,
-			Role:   role,
-			Name:   fmt.Sprintf("%s User %d", role, i+1),
-			Phone:  fmt.Sprintf("98765430%02d", i),
-		})
+		name := fmt.Sprintf("%s User %d", role, i+1)
+		
+		// Generates clean E.164 phone string formats (e.g., +919876543000)
+		phone := fmt.Sprintf("+9198765430%02d", i)
+
+		log.Printf("[%d/%d] Provisioning %s (%s)...", i+1, len(roles), name, phone)
+
+		// Create user on Supabase Auth and save into our local database atomically
+		authID, err := services.CreateAuthUser(
+			ctx,
+			db,
+			supabaseURL,
+			serviceRoleKey,
+			phone,
+			mockDOB,
+			role,
+			name,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to seed user %s: %w", phone, err)
+		}
+
+		// Retrieve the successfully committed row to pass to dependent table seeds
+		var user models.User
+		if err := db.Where("auth_id = ?", authID).First(&user).Error; err != nil {
+			return nil, fmt.Errorf("failed to retrieve seeded user row for %s: %w", authID, err)
+		}
+
+		seededUsers = append(seededUsers, user)
 	}
-	if err := db.Create(&users).Error; err != nil {
-		return nil, err
-	}
-	return users, nil
+
+	return seededUsers, nil
 }
 
 func SeedTeacherProfiles(db *gorm.DB, users []models.User) error {
