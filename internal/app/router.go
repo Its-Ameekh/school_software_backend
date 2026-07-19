@@ -61,6 +61,7 @@ func NewRouter(
 	{
 		// Authentication
 		v1.GET("/auth/me", authHandlers.Me)
+		v1.POST("/auth/change-temporary-password", authHandlers.ChangeTemporaryPassword)
 
 		// ==========================================
 		// ENG A TRACK: Identity, Classes, Leaves
@@ -123,20 +124,20 @@ func NewRouter(
 		// STAGE 5: File Asset Upload Infrastructure
 		// ==========================================
 
-		// Worksheet asset routes[cite: 1]
+		// Worksheet asset routes
 		worksheets := v1.Group("/worksheets")
 		{
-			worksheets.POST("/upload-url", worksheetHandlers.UploadURL)   // Get secure presigned link[cite: 1]
-			worksheets.POST("", worksheetHandlers.ConfirmUpload)          // Save database record[cite: 1]
-			worksheets.DELETE("/:id", worksheetHandlers.Delete)           // Hard-delete database & storage[cite: 1]
+			worksheets.POST("/upload-url", worksheetHandlers.UploadURL)   // Get secure presigned link
+			worksheets.POST("", worksheetHandlers.ConfirmUpload)          // Save database record
+			worksheets.DELETE("/:id", worksheetHandlers.Delete)           // Hard-delete database & storage
 		}
 
-		// Gallery photo routes[cite: 1]
+		// Gallery photo routes
 		gallery := v1.Group("/gallery")
 		{
-			gallery.POST("/upload-url", galleryHandlers.UploadURL)       // Get secure presigned link[cite: 1]
-			gallery.POST("", galleryHandlers.ConfirmUpload)              // Save database record[cite: 1]
-			gallery.DELETE("/:id", galleryHandlers.Delete)               // Hard-delete database & storage[cite: 1]
+			gallery.POST("/upload-url", galleryHandlers.UploadURL)       // Get secure presigned link
+			gallery.POST("", galleryHandlers.ConfirmUpload)              // Save database record
+			gallery.DELETE("/:id", galleryHandlers.Delete)               // Hard-delete database & storage
 		}
 	}
 

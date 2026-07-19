@@ -1,101 +1,89 @@
-package main
+package config
 
 import (
-	"context"
+	"fmt"
+	"log"
 	"os"
 
-	_ "github.com/Its-Ameekh/school_software_backend/docs"
-	"github.com/Its-Ameekh/school_software_backend/internal/app"
-	"github.com/Its-Ameekh/school_software_backend/internal/config"
-	"github.com/Its-Ameekh/school_software_backend/internal/database"
-	"github.com/Its-Ameekh/school_software_backend/internal/handlers"
-	"github.com/Its-Ameekh/school_software_backend/internal/logger"
-	"github.com/Its-Ameekh/school_software_backend/internal/middleware"
-	"github.com/Its-Ameekh/school_software_backend/internal/services"
+	"github.com/joho/godotenv"
 )
 
-// @title            School Software API
-// @version          1.0
-// @description      Backend API for the School Software platform (Preschool Management System)[cite: 1].
-// @BasePath         /
+// Config holds every environment-derived setting the app needs at boot.
+type Config struct {
+	Environment string // "dev" | "staging" | "prod"
+	Port        string
 
-func main() {
-	// 1. Config first[cite: 1]
-	cfg := config.Load()
+	DatabaseURL string // Supabase Postgres connection string
+	SupabaseURL string
 
-	// 2. Logger next[cite: 1]
-	log := logger.New(cfg.Environment)
+	R2AccessKey     string
+	R2SecretKey     string
+	R2Bucket        string
+	R2Endpoint      string
+	R2PublicBaseURL string 
 
-	// 3. Database[cite: 1]
-	db, err := database.Connect(cfg.DatabaseURL, log)
-	if err != nil {
-		log.Error("failed to connect to database", "error", err)
-		os.Exit(1)
+	SupabaseServiceRoleKey string // SECRET — server-side only, NEVER prefixed NEXT_PUBLIC_, never sent to frontend
+}
+
+// Load reads .env (if present) and all required env vars into a Config.
+func Load() *Config {
+	if err := godotenv.Load(); err != nil {
+		log.Println("no .env file found, relying on real environment variables")
 	}
 
-	// [Stage 5 Infrastructure Initialization]
-	// Build the Cloudflare R2 storage client and presigned asset lifecycle engine[cite: 1]
-	r2Client := services.NewR2Client(cfg)
-	uploadService := services.NewPresignedUploadService(r2Client, cfg)
+	cfg := &Config{
+		Environment: getEnvDefault("APP_ENV", "dev"),
+		Port:        getEnvDefault("PORT", "80"),
 
-	// 4. Container — bundles config/logger/db/r2[cite: 1]
-	container := app.New(cfg, log, db, r2Client)
+		DatabaseURL: os.Getenv("DATABASE_URL"),
+		SupabaseURL: os.Getenv("SUPABASE_URL"),
 
-	// [Stage 3 Core Singletons][cite: 1]
-	// Initialize JWKS Auth Middleware using the base Supabase URL from config[cite: 1]
-	authMW, err := middleware.NewAuthMiddleware(context.Background(), db, cfg.SupabaseURL)
-	if err != nil {
-		log.Error("failed to initialize auth middleware", "error", err)
-		os.Exit(1)
+		R2AccessKey:     os.Getenv("R2_ACCESS_KEY"),
+		R2SecretKey:     os.Getenv("R2_SECRET_KEY"),
+		R2Bucket:        os.Getenv("R2_BUCKET"),
+		R2Endpoint:      os.Getenv("R2_ENDPOINT"),
+		R2PublicBaseURL: os.Getenv("R2_PUBLIC_BASE_URL"),
+
+		SupabaseServiceRoleKey: os.Getenv("SUPABASE_SERVICE_ROLE_KEY"),
 	}
 
-	// Initialize the structural rate limiter singleton[cite: 1]
-	limiter := middleware.NewRateLimiter()
+	cfg.mustValidate()
 
-	// Initialize the authentication route handler engines[cite: 1]
-	authHandlers := handlers.NewAuthHandlers(db)
+	return cfg
+}
 
-	// Shared audit logger instance[cite: 1]
-	auditLogger := services.NewAuditLogger(db)
-
-	// [Stage 4 — Eng B Track Components][cite: 1]
-	financeHandlers := handlers.NewFinanceHandlers(db, auditLogger)
-	progressHandlers := handlers.NewProgressHandlers(db, auditLogger)
-
-	// [Stage 4 — Eng A Track Components][cite: 1]
-	// Instantiate the live production fee ledger service to automatically seed student financial billing balances[cite: 1]
-	feeService := services.NewFeeLedgerService()
-	supabaseServiceRoleKey := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
-
-	studentHandlers := handlers.NewStudentHandlers(db, auditLogger, feeService, cfg.SupabaseURL, supabaseServiceRoleKey)
-	classHandlers := handlers.NewClassHandlers(db, auditLogger)
-	leaveHandlers := handlers.NewLeaveHandlers(db, auditLogger)
-
-	// Change from:
-	// worksheetHandlers := handlers.NewWorksheetHandlers(container, uploadService)
-	// galleryHandlers := handlers.NewGalleryHandlers(container, uploadService)
-
-	// Change to:
-	worksheetHandlers := handlers.NewWorksheetHandlers(container.DB, uploadService)
-	galleryHandlers := handlers.NewGalleryHandlers(container.DB, uploadService)
-	// 5. Router — pass all required dependencies to fulfill the routing signature[cite: 1]
-	router := app.NewRouter(
-		container,
-		authMW,
-		limiter,
-		authHandlers,
-		financeHandlers,
-		progressHandlers,
-		studentHandlers,
-		classHandlers,
-		leaveHandlers,
-		worksheetHandlers, // Stage 5 Integration[cite: 1]
-		galleryHandlers,   // Stage 5 Integration[cite: 1]
-	)
-
-	// 6. Server — blocks here until SIGINT/SIGTERM, then drains cleanly[cite: 1]
-	if err := app.RunServer(container, router); err != nil {
-		log.Error("server exited with error", "error", err)
-		os.Exit(1)
+// mustValidate fatals with a specific message if any required field is empty.
+func (c *Config) mustValidate() {
+	required := map[string]string{
+		"DATABASE_URL":              c.DatabaseURL,
+		"SUPABASE_URL":              c.SupabaseURL,
+		"R2_ACCESS_KEY":             c.R2AccessKey,
+		"R2_SECRET_KEY":             c.R2SecretKey,
+		"R2_BUCKET":                 c.R2Bucket,
+		"R2_ENDPOINT":               c.R2Endpoint,
+		"R2_PUBLIC_BASE_URL":        c.R2PublicBaseURL,
+		"SUPABASE_SERVICE_ROLE_KEY": c.SupabaseServiceRoleKey,
 	}
+
+	var missing []string
+	for name, val := range required {
+		if val == "" {
+			missing = append(missing, name)
+		}
+	}
+
+	if len(missing) > 0 {
+		log.Fatal(formatMissingErr(missing))
+	}
+}
+
+func formatMissingErr(missing []string) string {
+	return fmt.Sprintf("config: missing required environment variable(s): %v", missing)
+}
+
+func getEnvDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }

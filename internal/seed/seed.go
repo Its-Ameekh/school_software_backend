@@ -29,7 +29,8 @@ func Run(db *gorm.DB) error {
 		if u.Role == "TEACHER" {
 			teacherUsers = append(teacherUsers, u)
 		}
-		if u.Role == "GUARDIAN" {
+		// Maps cleanly to PARENT context system constraints
+		if u.Role == "PARENT" { 
 			guardianUsers = append(guardianUsers, u)
 		}
 	}
@@ -66,11 +67,11 @@ func Run(db *gorm.DB) error {
 		return err
 	}
 
-	adminID := users[0].ID // first seeded user is ADMIN
+	adminID := users[0].ID // First seeded user maps to the system administrator instance
 	if err := SeedAttendance(db, students, adminID); err != nil {
 		return err
 	}
 
-	log.Println("Core seed completed successfully")
+	log.Println("Core seed completed successfully with real Supabase Phone Authentication profiles.")
 	return nil
 }
