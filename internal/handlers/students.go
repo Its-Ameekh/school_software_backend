@@ -52,16 +52,16 @@ type CreateStudentRequest struct {
 	// grade+year+sequence scheme, similar to the PFM-YYYY-NNNN pattern
 	// from the earlier Preschool Fee Manager project) — that's a real
 	// decision, not something to guess silently.
-	RollNumber      string  `json:"roll_number" binding:"required"`
-	FullName        string  `json:"full_name" binding:"required"`
-	DOB             string  `json:"dob" binding:"required"` // "YYYY-MM-DD"; also doubles as the guardian's temp password per Stage 3 design
-	Gender          string  `json:"gender" binding:"required"`
-	GradeTier       string  `json:"grade_tier" binding:"required"`
-	BloodGroup      *string `json:"blood_group"`
-	Allergies       *string `json:"allergies"`
-	SpecialTalents  *string `json:"special_talents"`
+	RollNumber       string  `json:"roll_number" binding:"required"`
+	FullName         string  `json:"full_name" binding:"required"`
+	DOB              string  `json:"dob" binding:"required"` // "YYYY-MM-DD"; also doubles as the guardian's temp password per Stage 3 design
+	Gender           string  `json:"gender" binding:"required"`
+	GradeTier        string  `json:"grade_tier" binding:"required"`
+	BloodGroup       *string `json:"blood_group"`
+	Allergies        *string `json:"allergies"`
+	SpecialTalents   *string `json:"special_talents"`
 	LanguagesSpoken *string `json:"languages_spoken"`
-	FoodType        *string `json:"food_type"`
+	FoodType         *string `json:"food_type"`
 
 	// Primary guardian — becomes the auth account (role=PARENT) and one
 	// Guardian row (StudentID FK'd after the student is created).
@@ -92,6 +92,11 @@ type CreateStudentResponse struct {
 
 type AssignClassRequest struct {
 	ClassID uint `json:"class_id" binding:"required"`
+}
+
+type MyChildResponse struct {
+	StudentID uint   `json:"student_id"`
+	FullName  string `json:"full_name"`
 }
 
 // ---- Handlers ----
@@ -195,17 +200,17 @@ func (h *StudentHandlers) CreateStudent(c *gin.Context) {
 		}
 
 		student = models.Student{
-			RollNumber:      req.RollNumber,
-			FullName:        req.FullName,
-			DOB:             dob,
-			Gender:          req.Gender,
-			GradeTier:       req.GradeTier,
-			BloodGroup:      req.BloodGroup,
-			Allergies:       req.Allergies,
-			SpecialTalents:  req.SpecialTalents,
+			RollNumber:       req.RollNumber,
+			FullName:         req.FullName,
+			DOB:              dob,
+			Gender:           req.Gender,
+			GradeTier:        req.GradeTier,
+			BloodGroup:       req.BloodGroup,
+			Allergies:        req.Allergies,
+			SpecialTalents:   req.SpecialTalents,
 			LanguagesSpoken: req.LanguagesSpoken,
-			FoodType:        req.FoodType,
-			ClassID:         nil, // unassigned at intake
+			FoodType:         req.FoodType,
+			ClassID:          nil, // unassigned at intake
 		}
 		if err := tx.Create(&student).Error; err != nil {
 			return fmt.Errorf("student insert: %w", err)
@@ -358,4 +363,50 @@ func (h *StudentHandlers) logOrphanedAccount(ctx context.Context, authID string,
 	// severity/tag (e.g. "ORPHANED_GUARDIAN_ACCOUNT") so this is
 	// alertable/searchable separately from ordinary error logs.
 	fmt.Printf("[ALERT] orphaned guardian account auth_id=%s user_id=%d cause=%v\n", authID, localUserID, cause)
+}
+
+// GetMyChildren godoc
+//	@Summary List the logged-in parent's linked children
+//	@Tags guardians
+//	@Security ApiKeyAuth
+//	@Produce json
+//	@Success 200 {array} MyChildResponse
+//	@Failure 403 {object} apierrors.ErrorResponse
+//	@Router /api/guardians/me/children [get]
+func (h *StudentHandlers) GetMyChildren(c *gin.Context) {
+	actorID, ok := middleware.GetUserID(c)
+	if !ok {
+		apierrors.Forbidden(c)
+		return
+	}
+
+	var guardians []models.Guardian
+	if err := h.db.WithContext(c.Request.Context()).
+		Where("user_id = ?", actorID).
+		Find(&guardians).Error; err != nil {
+		apierrors.Internal(c, err)
+		return
+	}
+
+	var studentIDs []uint
+	for _, g := range guardians {
+		studentIDs = append(studentIDs, g.StudentID)
+	}
+
+	var students []models.Student
+	if len(studentIDs) > 0 {
+		if err := h.db.WithContext(c.Request.Context()).
+			Where("id IN ?", studentIDs).
+			Find(&students).Error; err != nil {
+			apierrors.Internal(c, err)
+			return
+		}
+	}
+
+	resp := make([]MyChildResponse, 0, len(students))
+	for _, s := range students {
+		resp = append(resp, MyChildResponse{StudentID: s.ID, FullName: s.FullName})
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
