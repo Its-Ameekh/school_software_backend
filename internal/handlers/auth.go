@@ -14,7 +14,7 @@ import (
 	"log"
 	"net/http"
 	"time"
-	"unicode"
+	
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -221,28 +221,6 @@ func (h *AuthHandlers) ChangeTemporaryPassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-// validatePasswordPolicy checks length + character-class requirements
-// individually. Go's regexp package (RE2) does NOT support lookaheads,
-// so this cannot be a direct port of the frontend's
-// /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/ regex — that pattern won't
-// compile in Go at all.
-func validatePasswordPolicy(pw string) bool {
-	if len(pw) < 8 {
-		return false
-	}
-	var hasUpper, hasLower, hasDigit bool
-	for _, r := range pw {
-		switch {
-		case unicode.IsUpper(r):
-			hasUpper = true
-		case unicode.IsLower(r):
-			hasLower = true
-		case unicode.IsDigit(r):
-			hasDigit = true
-		}
-	}
-	return hasUpper && hasLower && hasDigit
-}
 
 // denyForbidden writes the same 403 JSON shape auth.go's deny() and
 // rbac.go's denyForbidden() use, so every layer of this backend returns

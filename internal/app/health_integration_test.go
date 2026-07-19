@@ -70,7 +70,7 @@ func TestHealthEndpoint(t *testing.T) {
 	limiter := middleware.NewRateLimiter()
 
 	// Initialize all required production domains
-	authHandlers := handlers.NewAuthHandlers(db)
+	authHandlers := handlers.NewAuthHandlers(db, nil)
 	auditLogger := services.NewAuditLogger(db)
 	financeHandlers := handlers.NewFinanceHandlers(db, auditLogger)
 	progressHandlers := handlers.NewProgressHandlers(db, auditLogger)
