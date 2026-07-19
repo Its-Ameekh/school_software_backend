@@ -35,8 +35,9 @@ func NewRouter(
 	studentHandlers *handlers.StudentHandlers,
 	classHandlers *handlers.ClassHandlers,
 	leaveHandlers *handlers.LeaveHandlers,
-	worksheetHandlers *handlers.WorksheetHandlers, // Stage 5 Track
-	galleryHandlers *handlers.GalleryHandlers,     // Stage 5 Track
+	worksheetHandlers *handlers.WorksheetHandlers,  // Stage 5 Track
+	galleryHandlers *handlers.GalleryHandlers,      // Stage 5 Track
+	attendanceHandlers *handlers.AttendanceHandlers, // Mapped for Attendance Tracking
 ) *gin.Engine {
 
 	if container.Config.Environment == "prod" {
@@ -102,6 +103,14 @@ func NewRouter(
 		// ==========================================
 		// ENG B TRACK: Attendance, Finance, Progress
 		// ==========================================
+
+		// Attendance endpoints
+		attendance := v1.Group("/attendance")
+		{
+			attendance.POST("/mark", attendanceHandlers.Mark)
+			attendance.POST("/submit", attendanceHandlers.Submit)
+			attendance.GET("/history", attendanceHandlers.History)
+		}
 
 		// Finance endpoints
 		finance := v1.Group("/finance")
