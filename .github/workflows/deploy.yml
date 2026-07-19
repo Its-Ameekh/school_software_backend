@@ -49,11 +49,15 @@ jobs:
             docker rm placeholder || true
             docker stop backend || true
             docker rm backend || true
-            docker run -d -p 80:8080 --restart unless-stopped --name backend \
+            docker run -d -p 80:80 --restart unless-stopped --name backend \
+              -e APP_ENV="prod" \
+              -e PORT="80" \
               -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
               -e SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
+              -e SUPABASE_SERVICE_ROLE_KEY="${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
               -e R2_ACCESS_KEY="${{ secrets.R2_ACCESS_KEY }}" \
               -e R2_SECRET_KEY="${{ secrets.R2_SECRET_KEY }}" \
               -e R2_BUCKET="${{ secrets.R2_BUCKET }}" \
               -e R2_ENDPOINT="${{ secrets.R2_ENDPOINT }}" \
+              -e R2_PUBLIC_BASE_URL="${{ secrets.R2_PUBLIC_BASE_URL }}" \
               ${{ secrets.DOCKERHUB_USERNAME }}/school-backend:latest
