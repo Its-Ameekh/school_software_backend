@@ -18,6 +18,9 @@ RUN apk add --no-cache ca-certificates
 WORKDIR /app
 COPY --from=builder /app/server .
 
+# Explicitly grant executable permissions to the binary
+RUN chmod +x /app/server
+
 EXPOSE 80
 
 CMD ["./server"]
